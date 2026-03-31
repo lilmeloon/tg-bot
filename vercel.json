@@ -1,7 +1,7 @@
 {
   "functions": {
     "api/search.py": {
-      "runtime": "python3.14.3"
+      "runtime": "vercel-python@3.0.0"
     }
   },
   "routes": [
