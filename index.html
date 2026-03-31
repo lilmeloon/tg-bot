@@ -578,8 +578,7 @@ function downloadTrack(id, name, artist) {
     renderHistory();
   }
 
-  // Отправляем боту команду скачать
-  tg?.sendData(JSON.stringify({ action: 'download', trackId: id, name, artist }));
+  // Отправляем боту команду скачат
   showToast('⏳ Отправляю в чат...');
 }
 
