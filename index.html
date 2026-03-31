@@ -418,12 +418,16 @@ async function doSearch(query) {
   const list = document.getElementById('track-list');
   list.innerHTML = '<div class="empty"><p>Ищу треки...</p></div>';
   try {
-    // Отправляем запрос боту через Telegram WebApp
-    tg?.sendData(JSON.stringify({ action: 'search', query }));
-    // Для демо показываем заглушку — в реальности данные придут от бота
-    showDemoResults(query);
+    const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+    const data = await res.json();
+    if (data.error || !data.tracks?.length) {
+      list.innerHTML = '<div class="empty"><p>Ничего не найдено.<br>Попробуй другой запрос.</p></div>';
+      return;
+    }
+    tracks = data.tracks;
+    renderTracks();
   } catch(e) {
-    list.innerHTML = '<div class="empty"><p>Ошибка поиска</p></div>';
+    list.innerHTML = '<div class="empty"><p>Ошибка поиска.<br>Попробуй позже.</p></div>';
   }
 }
 
