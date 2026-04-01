@@ -349,23 +349,14 @@ async function playTrack(idx, source = 'all') {
   showToast('⏳ Загружаю трек...');
   const url = `${RAILWAY_URL}/stream?artist=${encodeURIComponent(t.artist)}&name=${encodeURIComponent(t.name)}`;
   audio.pause();
-  audio.src = '';
+  audio.src = url;
   audio.load();
-  audio.src = url;
-  audio.type = 'audio/mpeg';
-  try {
-    await audio.play();
-    showToast('');
-} catch(e) {
-  console.error('Play error:', e);
-  showToast('Ошибка: ' + e.message);
-}
-  audio.src = url;
   try {
     await audio.play();
     showToast('');
   } catch(e) {
-    showToast('Ошибка воспроизведения');
+    console.error('Play error:', e);
+    showToast('Ошибка: ' + e.message);
   }
 
   renderAll();
@@ -378,15 +369,10 @@ function togglePlay() {
 
 function updatePlayBtn() {
   const paused = audio.paused;
-  document.getElementById('play-icon').style.display = paused ? 'block' : 'none';
-  document.getElementById('pause-icon').style.display = paused ? 'none' : 'block';
-  // Восстанавливаем кнопку если она была заменена спиннером
-  if (!paused) {
-    const btn = document.getElementById('play-btn');
-    if (!btn.querySelector('#play-icon')) {
-      btn.innerHTML = '<svg id="play-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="display:none"><polygon points="5 3 19 12 5 21 5 3"/></svg><svg id="pause-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
-    }
-  }
+  const playIcon = document.getElementById('play-icon');
+  const pauseIcon = document.getElementById('pause-icon');
+  if (playIcon) playIcon.style.display = paused ? 'block' : 'none';
+  if (pauseIcon) pauseIcon.style.display = paused ? 'none' : 'block';
 }
 
 function prevTrack() {
