@@ -348,6 +348,18 @@ async function playTrack(idx, source = 'all') {
   // Стримим аудио с Railway
   showToast('⏳ Загружаю трек...');
   const url = `${RAILWAY_URL}/stream?artist=${encodeURIComponent(t.artist)}&name=${encodeURIComponent(t.name)}`;
+  audio.pause();
+  audio.src = '';
+  audio.load();
+  audio.src = url;
+  audio.type = 'audio/mpeg';
+  try {
+    await audio.play();
+    showToast('');
+} catch(e) {
+  console.error('Play error:', e);
+  showToast('Ошибка: ' + e.message);
+}
   audio.src = url;
   try {
     await audio.play();
