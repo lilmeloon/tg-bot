@@ -8,278 +8,109 @@
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-
   :root {
-    --bg: #0a0a0a;
-    --bg2: #141414;
-    --bg3: #1e1e1e;
-    --bg4: #282828;
-    --accent: #1db954;
-    --accent2: #1ed760;
-    --text: #ffffff;
-    --text2: #b3b3b3;
-    --text3: #535353;
-    --radius: 12px;
-    --player-h: 80px;
-    --nav-h: 64px;
+    --bg: #0a0a0a; --bg2: #141414; --bg3: #1e1e1e; --bg4: #282828;
+    --accent: #1db954; --accent2: #1ed760;
+    --text: #ffffff; --text2: #b3b3b3; --text3: #535353;
+    --radius: 12px; --player-h: 90px; --nav-h: 64px;
   }
+  html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px; -webkit-font-smoothing: antialiased; }
+  #app { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
-  html, body {
-    height: 100%;
-    overflow: hidden;
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 14px;
-    -webkit-font-smoothing: antialiased;
-  }
-
-  #app {
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  /* ── HEADER ── */
-  .header {
-    padding: 16px 20px 12px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-shrink: 0;
-  }
-  .header-title {
-    font-family: 'Syne', sans-serif;
-    font-size: 22px;
-    font-weight: 700;
-    letter-spacing: -0.5px;
-  }
+  .header { padding: 16px 20px 12px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .header-title { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
   .header-title span { color: var(--accent); }
-  .avatar {
-    width: 34px; height: 34px;
-    border-radius: 50%;
-    background: var(--accent);
-    display: flex; align-items: center; justify-content: center;
-    font-family: 'Syne', sans-serif;
-    font-size: 13px; font-weight: 700;
-    color: #000;
-    cursor: pointer;
-  }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; color: #000; }
 
-  /* ── SEARCH ── */
   .search-wrap { padding: 0 20px 14px; flex-shrink: 0; }
-  .search-box {
-    background: var(--bg3);
-    border-radius: var(--radius);
-    display: flex; align-items: center; gap: 10px;
-    padding: 11px 14px;
-    border: 1px solid transparent;
-    transition: border-color 0.2s;
-  }
+  .search-box { background: var(--bg3); border-radius: var(--radius); display: flex; align-items: center; gap: 10px; padding: 11px 14px; border: 1px solid transparent; transition: border-color 0.2s; }
   .search-box:focus-within { border-color: var(--accent); }
-  .search-box svg { flex-shrink: 0; color: var(--text3); }
-  .search-box input {
-    background: none; border: none; outline: none;
-    color: var(--text); font-family: 'DM Sans', sans-serif;
-    font-size: 14px; width: 100%;
-  }
+  .search-box input { background: none; border: none; outline: none; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px; width: 100%; }
   .search-box input::placeholder { color: var(--text3); }
-  #clear-btn { display: none; cursor: pointer; color: var(--text3); }
+  #clear-btn { display: none; cursor: pointer; color: var(--text3); background: none; border: none; }
   #clear-btn.visible { display: flex; }
 
-  /* ── TABS ── */
   .tabs { display: flex; gap: 8px; padding: 0 20px 14px; flex-shrink: 0; overflow-x: auto; scrollbar-width: none; }
   .tabs::-webkit-scrollbar { display: none; }
-  .tab {
-    padding: 7px 16px; border-radius: 20px;
-    font-size: 13px; font-weight: 500; white-space: nowrap;
-    cursor: pointer; transition: all 0.2s;
-    border: 1px solid var(--bg4); color: var(--text2);
-    background: transparent;
-  }
+  .tab { padding: 7px 16px; border-radius: 20px; font-size: 13px; font-weight: 500; white-space: nowrap; cursor: pointer; transition: all 0.2s; border: 1px solid var(--bg4); color: var(--text2); background: transparent; }
   .tab.active { background: var(--accent); color: #000; border-color: var(--accent); }
 
-  /* ── CONTENT ── */
-  .content {
-    flex: 1; overflow-y: auto; overflow-x: hidden;
-    padding: 0 20px;
-    padding-bottom: calc(var(--player-h) + var(--nav-h) + 8px);
-    scrollbar-width: none;
-  }
+  .content { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 0 20px; padding-bottom: calc(var(--player-h) + var(--nav-h) + 8px); scrollbar-width: none; }
   .content::-webkit-scrollbar { display: none; }
 
-  /* ── SECTION ── */
   .section { display: none; }
   .section.active { display: block; }
+  .section-label { font-size: 11px; font-weight: 500; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text3); margin-bottom: 12px; }
 
-  .section-label {
-    font-size: 11px; font-weight: 500; letter-spacing: 1.5px;
-    text-transform: uppercase; color: var(--text3);
-    margin-bottom: 12px;
-  }
-
-  /* ── TRACK CARD ── */
   .track-list { display: flex; flex-direction: column; gap: 4px; }
-  .track-item {
-    display: flex; align-items: center; gap: 12px;
-    padding: 8px 10px; border-radius: var(--radius);
-    cursor: pointer; transition: background 0.15s;
-    position: relative;
-  }
+  .track-item { display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: var(--radius); cursor: pointer; transition: background 0.15s; }
   .track-item:active { background: var(--bg3); transform: scale(0.99); }
   .track-item.playing { background: var(--bg3); }
   .track-item.playing .track-name { color: var(--accent); }
 
-  .cover {
-    width: 48px; height: 48px; border-radius: 8px;
-    flex-shrink: 0; position: relative; overflow: hidden;
-  }
-  .cover-img {
-    width: 100%; height: 100%; object-fit: cover;
-    display: block;
-  }
-  .cover-placeholder {
-    width: 100%; height: 100%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 20px;
-  }
-  .playing-indicator {
-    position: absolute; inset: 0;
-    background: rgba(0,0,0,0.5);
-    display: none; align-items: center; justify-content: center;
-  }
+  .cover { width: 48px; height: 48px; border-radius: 8px; flex-shrink: 0; position: relative; overflow: hidden; }
+  .cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .cover-placeholder { width: 100%; height: 100%; background: var(--bg4); }
+  .playing-indicator { position: absolute; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; }
   .track-item.playing .playing-indicator { display: flex; }
   .bars { display: flex; align-items: flex-end; gap: 2px; height: 16px; }
-  .bar {
-    width: 3px; background: var(--accent); border-radius: 2px;
-    animation: bounce 0.6s ease infinite alternate;
-  }
+  .bar { width: 3px; background: var(--accent); border-radius: 2px; animation: bounce 0.6s ease infinite alternate; }
   .bar:nth-child(2) { animation-delay: 0.2s; }
   .bar:nth-child(3) { animation-delay: 0.1s; }
-  @keyframes bounce {
-    from { height: 4px; }
-    to { height: 14px; }
-  }
+  @keyframes bounce { from { height: 4px; } to { height: 14px; } }
 
   .track-info { flex: 1; min-width: 0; }
   .track-name { font-size: 14px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .track-meta { font-size: 12px; color: var(--text2); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
   .track-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
   .track-dur { font-size: 12px; color: var(--text3); }
-  .fav-btn {
-    width: 28px; height: 28px;
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer; border-radius: 50%;
-    transition: transform 0.15s;
-    background: none; border: none;
-    color: var(--text3);
-  }
+
+  .fav-btn { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 50%; background: none; border: none; color: var(--text3); transition: transform 0.15s; }
   .fav-btn:active { transform: scale(0.85); }
   .fav-btn.active { color: var(--accent); }
 
-  /* ── DOWNLOAD BTN ── */
-  .dl-btn {
-    width: 30px; height: 30px;
-    display: flex; align-items: center; justify-content: center;
-    background: var(--bg4); border-radius: 50%; border: none;
-    color: var(--text2); cursor: pointer;
-    transition: all 0.2s;
-    flex-shrink: 0;
-  }
-  .dl-btn:active { background: var(--accent); color: #000; transform: scale(0.9); }
-  .dl-btn.loading { animation: spin 1s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* ── EMPTY STATE ── */
-  .empty {
-    display: flex; flex-direction: column; align-items: center;
-    justify-content: center; padding: 60px 20px; gap: 12px;
-    color: var(--text3); text-align: center;
-  }
+  .empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; gap: 12px; color: var(--text3); text-align: center; }
   .empty svg { opacity: 0.3; }
   .empty p { font-size: 14px; line-height: 1.6; }
 
   /* ── PLAYER ── */
-  .player {
-    position: fixed; bottom: var(--nav-h); left: 0; right: 0;
-    height: var(--player-h);
-    background: var(--bg2);
-    border-top: 1px solid var(--bg3);
-    padding: 0 16px;
-    display: none; align-items: center; gap: 12px;
-    z-index: 100;
-  }
+  .player { position: fixed; bottom: var(--nav-h); left: 0; right: 0; height: var(--player-h); background: var(--bg2); border-top: 1px solid var(--bg3); padding: 10px 16px 6px; display: none; flex-direction: column; gap: 8px; z-index: 100; }
   .player.visible { display: flex; }
-  .player-cover {
-    width: 46px; height: 46px; border-radius: 8px; flex-shrink: 0;
-    overflow: hidden;
-  }
+  .player-top { display: flex; align-items: center; gap: 12px; }
+  .player-cover { width: 44px; height: 44px; border-radius: 8px; flex-shrink: 0; overflow: hidden; background: var(--bg4); }
   .player-cover img { width: 100%; height: 100%; object-fit: cover; }
-  .player-cover .cover-placeholder { width: 100%; height: 100%; }
   .player-info { flex: 1; min-width: 0; }
   .player-name { font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .player-artist { font-size: 11px; color: var(--text2); margin-top: 2px; }
-  .player-progress {
-    position: absolute; bottom: 0; left: 0; right: 0; height: 2px;
-    background: var(--bg4);
-  }
-  .player-progress-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.5s linear; }
+  .player-artist { font-size: 11px; color: var(--text2); margin-top: 1px; }
   .player-controls { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
-  .ctrl {
-    width: 36px; height: 36px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    background: none; border: none; color: var(--text2); cursor: pointer;
-    transition: all 0.15s;
-  }
+  .ctrl { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: none; border: none; color: var(--text2); cursor: pointer; transition: all 0.15s; }
   .ctrl:active { transform: scale(0.88); color: var(--text); }
-  .ctrl.play-btn {
-    width: 42px; height: 42px;
-    background: var(--accent); color: #000;
-  }
+  .ctrl.play-btn { width: 40px; height: 40px; background: var(--accent); color: #000; }
   .ctrl.play-btn:active { background: var(--accent2); }
 
-  /* ── NAV ── */
-  .nav {
-    position: fixed; bottom: 0; left: 0; right: 0;
-    height: var(--nav-h);
-    background: var(--bg2);
-    border-top: 1px solid var(--bg3);
-    display: flex; align-items: center;
-    z-index: 100;
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-  .nav-item {
-    flex: 1; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; gap: 4px;
-    cursor: pointer; transition: color 0.15s;
-    color: var(--text3); padding: 8px 0;
-    background: none; border: none;
-  }
+  .player-bottom { display: flex; align-items: center; gap: 8px; }
+  .progress-bar { flex: 1; height: 3px; background: var(--bg4); border-radius: 2px; cursor: pointer; position: relative; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 2px; width: 0%; transition: width 0.3s linear; pointer-events: none; }
+  .time-label { font-size: 10px; color: var(--text3); white-space: nowrap; min-width: 70px; text-align: right; }
+
+  .loading-bar { position: absolute; top: 0; left: 0; height: 100%; width: 0%; background: var(--bg3); border-radius: 2px; }
+
+  .nav { position: fixed; bottom: 0; left: 0; right: 0; height: var(--nav-h); background: var(--bg2); border-top: 1px solid var(--bg3); display: flex; align-items: center; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
+  .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; color: var(--text3); padding: 8px 0; background: none; border: none; transition: color 0.15s; }
   .nav-item.active { color: var(--accent); }
   .nav-item span { font-size: 10px; font-weight: 500; }
 
-  /* ── TOAST ── */
-  .toast {
-    position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
-    background: var(--bg4); color: var(--text);
-    padding: 10px 20px; border-radius: 20px;
-    font-size: 13px; white-space: nowrap;
-    opacity: 0; transition: opacity 0.3s;
-    z-index: 999; pointer-events: none;
-  }
+  .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: var(--bg4); color: var(--text); padding: 10px 20px; border-radius: 20px; font-size: 13px; white-space: nowrap; opacity: 0; transition: opacity 0.3s; z-index: 999; pointer-events: none; }
   .toast.show { opacity: 1; }
 
-  /* ── ANIMATIONS ── */
-  .track-item { animation: fadeIn 0.3s ease; }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .track-item { animation: fadeIn 0.25s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
 </style>
 </head>
 <body>
 <div id="app">
   <div class="header">
-    <div class="header-title">Lib<span>aud</span></div>
+    <div class="header-title">Mu<span>sic</span></div>
     <div class="avatar" id="avatar">?</div>
   </div>
 
@@ -294,9 +125,9 @@
   </div>
 
   <div class="tabs">
-    <div class="tab active" onclick="switchTab('all', this)">Все треки</div>
-    <div class="tab" onclick="switchTab('fav', this)">Избранное</div>
-    <div class="tab" onclick="switchTab('history', this)">История</div>
+    <div class="tab active" onclick="switchTab('all',this)">Все треки</div>
+    <div class="tab" onclick="switchTab('fav',this)">Избранное</div>
+    <div class="tab" onclick="switchTab('history',this)">История</div>
   </div>
 
   <div class="content">
@@ -309,63 +140,61 @@
         </div>
       </div>
     </div>
-
     <div id="sec-fav" class="section">
       <div class="section-label">Избранное</div>
       <div class="track-list" id="fav-list">
-        <div class="empty">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-          <p>Нет избранных треков.<br>Нажми ♥ чтобы добавить</p>
-        </div>
+        <div class="empty"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><p>Нет избранных треков</p></div>
       </div>
     </div>
-
     <div id="sec-history" class="section">
-      <div class="section-label">Недавно скачанные</div>
+      <div class="section-label">История</div>
       <div class="track-list" id="history-list">
-        <div class="empty">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          <p>История пуста</p>
-        </div>
+        <div class="empty"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><p>История пуста</p></div>
       </div>
     </div>
   </div>
 
-  <!-- PLAYER -->
   <div class="player" id="player">
-    <div class="player-cover" id="player-cover">
-      <div class="cover-placeholder" id="player-cover-placeholder" style="background:#1e1e1e;font-size:20px;">🎵</div>
+    <div class="player-top">
+      <div class="player-cover" id="player-cover"></div>
+      <div class="player-info">
+        <div class="player-name" id="player-name">—</div>
+        <div class="player-artist" id="player-artist">—</div>
+      </div>
+      <div class="player-controls">
+        <button class="ctrl" onclick="prevTrack()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" stroke-width="2"/></svg>
+        </button>
+        <button class="ctrl play-btn" id="play-btn" onclick="togglePlay()">
+          <svg id="play-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          <svg id="pause-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="display:none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+        </button>
+        <button class="ctrl" onclick="nextTrack()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2"/></svg>
+        </button>
+        <button class="ctrl fav-btn" id="player-fav-btn" onclick="toggleFavCurrent()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        </button>
+      </div>
     </div>
-    <div class="player-info">
-      <div class="player-name" id="player-name">—</div>
-      <div class="player-artist" id="player-artist">—</div>
+    <div class="player-bottom">
+      <div class="progress-bar" id="progress-bar" onclick="seekAudio(event)">
+        <div class="progress-fill" id="progress-fill"></div>
+      </div>
+      <div class="time-label" id="time-label">0:00 / 0:00</div>
     </div>
-    <div class="player-controls">
-      <button class="ctrl" onclick="prevTrack()">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" stroke-width="2"/></svg>
-      </button>
-      <button class="ctrl play-btn" id="play-btn" onclick="togglePlay()">
-        <svg id="play-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-        <svg id="pause-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="display:none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-      </button>
-      <button class="ctrl" onclick="nextTrack()">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2"/></svg>
-      </button>
-    </div>
-    <div class="player-progress"><div class="player-progress-fill" id="progress-fill"></div></div>
   </div>
 
-  <!-- NAV -->
   <nav class="nav">
-    <button class="nav-item active" onclick="switchTab('all', null, this)">
+    <button class="nav-item active" id="nav-all" onclick="switchTab('all',null,this)">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <span>Поиск</span>
     </button>
-    <button class="nav-item" onclick="switchTab('fav', null, this)">
+    <button class="nav-item" id="nav-fav" onclick="switchTab('fav',null,this)">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
       <span>Избранное</span>
     </button>
-    <button class="nav-item" onclick="switchTab('history', null, this)">
+    <button class="nav-item" id="nav-history" onclick="switchTab('history',null,this)">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
       <span>История</span>
     </button>
@@ -375,14 +204,40 @@
 <div class="toast" id="toast"></div>
 
 <script>
+const RAILWAY_URL = 'https://web-production-4beac.up.railway.app';
 const tg = window.Telegram?.WebApp;
 if (tg) { tg.expand(); tg.setHeaderColor('#0a0a0a'); tg.setBackgroundColor('#0a0a0a'); }
-
-// Инициализация аватара из Telegram
 const user = tg?.initDataUnsafe?.user;
-if (user) {
-  const av = document.getElementById('avatar');
-  av.textContent = (user.first_name || 'U')[0].toUpperCase();
+if (user) document.getElementById('avatar').textContent = (user.first_name || 'U')[0].toUpperCase();
+
+// ── АУДИО ──
+const audio = new Audio();
+audio.preload = 'none';
+
+audio.addEventListener('timeupdate', () => {
+  if (!audio.duration) return;
+  const pct = (audio.currentTime / audio.duration) * 100;
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('time-label').textContent = `${fmt(audio.currentTime)} / ${fmt(audio.duration)}`;
+});
+audio.addEventListener('ended', nextTrack);
+audio.addEventListener('playing', updatePlayBtn);
+audio.addEventListener('pause', updatePlayBtn);
+audio.addEventListener('waiting', () => {
+  document.getElementById('play-btn').innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>';
+});
+
+function fmt(sec) {
+  const m = Math.floor(sec / 60), s = Math.floor(sec % 60);
+  return `${m}:${String(s).padStart(2,'0')}`;
+}
+
+function seekAudio(e) {
+  if (!audio.duration) return;
+  const bar = document.getElementById('progress-bar');
+  const rect = bar.getBoundingClientRect();
+  const pct = (e.clientX - rect.left) / rect.width;
+  audio.currentTime = pct * audio.duration;
 }
 
 // ── STATE ──
@@ -390,18 +245,13 @@ let tracks = [];
 let favorites = JSON.parse(localStorage.getItem('favs') || '[]');
 let history = JSON.parse(localStorage.getItem('history') || '[]');
 let currentIdx = -1;
-let isPlaying = false;
+let currentSource = 'all';
 let searchTimer = null;
-let progressTimer = null;
-let progressVal = 0;
-let currentTab = 'all';
 
 // ── SEARCH ──
 const searchInput = document.getElementById('search-input');
-const clearBtn = document.getElementById('clear-btn');
-
 searchInput.addEventListener('input', () => {
-  clearBtn.classList.toggle('visible', searchInput.value.length > 0);
+  document.getElementById('clear-btn').classList.toggle('visible', searchInput.value.length > 0);
   clearTimeout(searchTimer);
   if (searchInput.value.trim().length < 2) return;
   searchTimer = setTimeout(() => doSearch(searchInput.value.trim()), 500);
@@ -409,9 +259,9 @@ searchInput.addEventListener('input', () => {
 
 function clearSearch() {
   searchInput.value = '';
-  clearBtn.classList.remove('visible');
+  document.getElementById('clear-btn').classList.remove('visible');
   tracks = [];
-  renderTracks();
+  renderList('track-list', tracks);
 }
 
 async function doSearch(query) {
@@ -421,193 +271,175 @@ async function doSearch(query) {
     const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    if (!data.tracks || data.tracks.length === 0) {
-      list.innerHTML = '<div class="empty"><p>Ничего не найдено.<br>Попробуй другой запрос.</p></div>';
+    if (!data.tracks || !data.tracks.length) {
+      list.innerHTML = '<div class="empty"><p>Ничего не найдено</p></div>';
       return;
     }
     tracks = data.tracks;
-    renderTracks();
+    renderList('track-list', tracks);
   } catch(e) {
-    console.error('Search error:', e);
-    list.innerHTML = `<div class="empty"><p>Ошибка поиска.<br>${e.message}</p></div>`;
+    list.innerHTML = `<div class="empty"><p>Ошибка: ${e.message}</p></div>`;
   }
 }
 
 // ── RENDER ──
-function renderTracks() {
-  renderList('track-list', tracks);
-}
-
-function renderFavs() {
-  renderList('fav-list', favorites, true);
-}
-
-function renderHistory() {
-  renderList('history-list', history, false, true);
-}
-
-function renderList(containerId, items, isFav = false, isHist = false) {
+function renderList(containerId, items) {
   const list = document.getElementById(containerId);
+  const emptyMsgs = {
+    'track-list': 'Введи название трека<br>или исполнителя',
+    'fav-list': 'Нет избранных треков',
+    'history-list': 'История пуста',
+  };
   if (!items.length) {
-    const msgs = {
-      'track-list': 'Введи название трека<br>или исполнителя',
-      'fav-list': 'Нет избранных треков.<br>Нажми ♥ чтобы добавить',
-      'history-list': 'История пуста',
-    };
-    list.innerHTML = `<div class="empty"><p>${msgs[containerId]}</p></div>`;
+    list.innerHTML = `<div class="empty"><p>${emptyMsgs[containerId]}</p></div>`;
     return;
   }
+  const source = containerId === 'fav-list' ? 'fav' : containerId === 'history-list' ? 'history' : 'all';
   list.innerHTML = items.map((t, i) => {
     const isFaved = favorites.some(f => f.id === t.id);
-    const isNowPlaying = currentIdx !== -1 && tracks[currentIdx]?.id === t.id;
-    const coverHtml = t.cover
-      ? `<img class="cover-img" src="${t.cover}" loading="lazy">`
-      : `<div class="cover-placeholder" style="background:#282828"></div>`;
+    const isNow = currentSource === source && currentIdx === i;
+    const coverHtml = t.cover ? `<img src="${t.cover}" loading="lazy">` : `<div class="cover-placeholder"></div>`;
     return `
-    <div class="track-item ${isNowPlaying ? 'playing' : ''}" onclick="playTrack(${i}, '${isFav ? 'fav' : isHist ? 'history' : 'all'}')">
-      <div class="cover">
-        ${coverHtml}
-        <div class="playing-indicator">
-          <div class="bars"><div class="bar"></div><div class="bar"></div><div class="bar"></div></div>
-        </div>
-      </div>
+    <div class="track-item ${isNow ? 'playing' : ''}" onclick="playTrack(${i},'${source}')">
+      <div class="cover">${coverHtml}<div class="playing-indicator"><div class="bars"><div class="bar"></div><div class="bar"></div><div class="bar"></div></div></div></div>
       <div class="track-info">
         <div class="track-name">${t.name}</div>
-        <div class="track-meta">${t.artist}</div>
+        <div class="track-meta">${t.artist}${t.album ? ' · ' + t.album : ''}</div>
       </div>
       <div class="track-actions">
         <div class="track-dur">${t.dur || ''}</div>
-        <button class="fav-btn ${isFaved ? 'active' : ''}" onclick="event.stopPropagation(); toggleFav('${t.id}')">
+        <button class="fav-btn ${isFaved ? 'active' : ''}" onclick="event.stopPropagation();toggleFav('${t.id}','${source}',${i})">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="${isFaved ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-        </button>
-        <button class="dl-btn" onclick="event.stopPropagation(); downloadTrack('${t.id}', '${t.name}', '${t.artist}')">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         </button>
       </div>
     </div>`;
   }).join('');
 }
 
-// ── PLAYER ──
-function playTrack(idx, source = 'all') {
+// ── PLAY ──
+async function playTrack(idx, source = 'all') {
   const list = source === 'fav' ? favorites : source === 'history' ? history : tracks;
   if (idx < 0 || idx >= list.length) return;
+
   currentIdx = idx;
+  currentSource = source;
   const t = list[idx];
 
+  // Обновляем плеер
   document.getElementById('player').classList.add('visible');
   document.getElementById('player-name').textContent = t.name;
   document.getElementById('player-artist').textContent = t.artist;
+  document.getElementById('progress-fill').style.width = '0%';
+  document.getElementById('time-label').textContent = '0:00 / 0:00';
 
-  const playerCover = document.getElementById('player-cover');
-  playerCover.innerHTML = t.cover
-    ? `<img src="${t.cover}" style="width:100%;height:100%;object-fit:cover;">`
-    : `<div style="width:100%;height:100%;background:#282828;border-radius:8px;"></div>`;
+  const coverEl = document.getElementById('player-cover');
+  coverEl.innerHTML = t.cover ? `<img src="${t.cover}" style="width:100%;height:100%;object-fit:cover;">` : '';
 
-  isPlaying = true;
-  updatePlayBtn();
-  startProgress();
-  renderTracks(); renderFavs(); renderHistory();
+  // Обновляем кнопку избранного в плеере
+  updatePlayerFavBtn(t.id);
+
+  // Добавляем в историю
+  if (!history.find(h => h.id === t.id)) {
+    history.unshift(t);
+    if (history.length > 30) history.pop();
+    localStorage.setItem('history', JSON.stringify(history));
+  }
+
+  // Стримим аудио с Railway
+  showToast('⏳ Загружаю трек...');
+  const url = `${RAILWAY_URL}/stream?artist=${encodeURIComponent(t.artist)}&name=${encodeURIComponent(t.name)}`;
+  audio.src = url;
+  try {
+    await audio.play();
+    showToast('');
+  } catch(e) {
+    showToast('Ошибка воспроизведения');
+  }
+
+  renderAll();
 }
 
 function togglePlay() {
-  isPlaying = !isPlaying;
-  updatePlayBtn();
-  isPlaying ? startProgress() : clearInterval(progressTimer);
+  if (!audio.src) return;
+  audio.paused ? audio.play() : audio.pause();
 }
 
 function updatePlayBtn() {
-  document.getElementById('play-icon').style.display = isPlaying ? 'none' : 'block';
-  document.getElementById('pause-icon').style.display = isPlaying ? 'block' : 'none';
+  const paused = audio.paused;
+  document.getElementById('play-icon').style.display = paused ? 'block' : 'none';
+  document.getElementById('pause-icon').style.display = paused ? 'none' : 'block';
+  // Восстанавливаем кнопку если она была заменена спиннером
+  if (!paused) {
+    const btn = document.getElementById('play-btn');
+    if (!btn.querySelector('#play-icon')) {
+      btn.innerHTML = '<svg id="play-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="display:none"><polygon points="5 3 19 12 5 21 5 3"/></svg><svg id="pause-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
+    }
+  }
 }
 
 function prevTrack() {
-  if (currentIdx > 0) playTrack(currentIdx - 1);
+  const list = currentSource === 'fav' ? favorites : currentSource === 'history' ? history : tracks;
+  if (currentIdx > 0) playTrack(currentIdx - 1, currentSource);
 }
 
 function nextTrack() {
-  if (currentIdx < tracks.length - 1) playTrack(currentIdx + 1);
-}
-
-function startProgress() {
-  clearInterval(progressTimer);
-  progressTimer = setInterval(() => {
-    progressVal = (progressVal + 0.3) % 100;
-    document.getElementById('progress-fill').style.width = progressVal + '%';
-  }, 300);
+  const list = currentSource === 'fav' ? favorites : currentSource === 'history' ? history : tracks;
+  if (currentIdx < list.length - 1) playTrack(currentIdx + 1, currentSource);
 }
 
 // ── FAVORITES ──
-function toggleFav(id) {
-  const track = tracks.find(t => t.id === id) || history.find(t => t.id === id);
+function toggleFav(id, source, idx) {
+  const list = source === 'fav' ? favorites : source === 'history' ? history : tracks;
+  const track = list[idx];
   if (!track) return;
-  const idx = favorites.findIndex(f => f.id === id);
-  if (idx === -1) {
-    favorites.unshift(track);
-    showToast('Добавлено в избранное');
-  } else {
-    favorites.splice(idx, 1);
-    showToast('Удалено из избранного');
-  }
+  const fi = favorites.findIndex(f => f.id === id);
+  if (fi === -1) { favorites.unshift(track); showToast('Добавлено в избранное'); }
+  else { favorites.splice(fi, 1); showToast('Удалено из избранного'); }
   localStorage.setItem('favs', JSON.stringify(favorites));
-  renderTracks(); renderFavs();
+  updatePlayerFavBtn(id);
+  renderAll();
 }
 
-// ── DOWNLOAD ──
-function downloadTrack(id, name, artist) {
-  const track = tracks.find(t => t.id === id);
-  if (!track) return;
+function toggleFavCurrent() {
+  const list = currentSource === 'fav' ? favorites : currentSource === 'history' ? history : tracks;
+  if (currentIdx < 0 || !list[currentIdx]) return;
+  const t = list[currentIdx];
+  toggleFav(t.id, currentSource, currentIdx);
+}
 
-  // Добавляем в историю
-  if (!history.find(h => h.id === id)) {
-    history.unshift(track);
-    if (history.length > 20) history.pop();
-    localStorage.setItem('history', JSON.stringify(history));
-    renderHistory();
-  }
-
-  // Отправляем боту команду скачат
-  showToast('⏳ Отправляю в чат...');
+function updatePlayerFavBtn(id) {
+  const isFaved = favorites.some(f => f.id === id);
+  const btn = document.getElementById('player-fav-btn');
+  btn.classList.toggle('active', isFaved);
+  btn.querySelector('svg').setAttribute('fill', isFaved ? 'currentColor' : 'none');
 }
 
 // ── TABS ──
 function switchTab(tab, tabEl, navEl) {
-  currentTab = tab;
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.getElementById('sec-' + tab).classList.add('active');
+  if (tabEl) { document.querySelectorAll('.tab').forEach(t => t.classList.remove('active')); tabEl.classList.add('active'); }
+  if (navEl) { document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active')); navEl.classList.add('active'); }
+  if (tab === 'fav') renderList('fav-list', favorites);
+  if (tab === 'history') renderList('history-list', history);
+}
 
-  if (tabEl) {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    tabEl.classList.add('active');
-  }
-  if (navEl) {
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    navEl.classList.add('active');
-    const tabMap = { 0: 'all', 1: 'fav', 2: 'history' };
-  }
-
-  if (tab === 'fav') renderFavs();
-  if (tab === 'history') renderHistory();
+function renderAll() {
+  renderList('track-list', tracks);
+  renderList('fav-list', favorites);
+  renderList('history-list', history);
 }
 
 // ── TOAST ──
+let toastTimer;
 function showToast(msg) {
+  if (!msg) return;
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2000);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
 }
-
-// Слушаем данные от бота (результаты поиска)
-window.addEventListener('message', (e) => {
-  try {
-    const data = JSON.parse(e.data);
-    if (data.type === 'search_results') {
-      tracks = data.tracks;
-      renderTracks();
-    }
-  } catch(e) {}
-});
 </script>
 </body>
 </html>
