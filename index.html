@@ -143,6 +143,10 @@
   .fs-action { background: none; border: none; color: #888; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 8px; transition: color 0.15s; }
   .fs-action:active { color: #000; }
   .fs-action.highlight { color: #000; }
+  .fs-action.downloaded { color: #000; }
+  .dl-progress { position: absolute; bottom: 0; left: 0; height: 2px; background: #000; width: 0%; transition: width 0.3s; }
+  .dl-spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #ccc; border-top-color: #000; border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
   .nav { position: fixed; bottom: 0; left: 0; right: 0; height: var(--nav-h); background: #fff; border-top: 3px solid #000; display: flex; align-items: center; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
   .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; color: #999; padding: 8px 0; background: none; border: none; transition: color 0.15s; }
@@ -175,6 +179,7 @@
     <div class="tab active" onclick="switchTab('all',this)">Все треки</div>
     <div class="tab" onclick="switchTab('fav',this)">Избранное</div>
     <div class="tab" onclick="switchTab('history',this)">История</div>
+    <div class="tab" onclick="switchTab('offline',this)">Скачанные</div>
   </div>
   <div class="content">
     <div id="sec-all" class="section active">
@@ -193,6 +198,12 @@
       <div class="section-label">История</div>
       <div class="track-list" id="history-list">
         <div class="empty"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><p>История пуста</p></div>
+      </div>
+    </div>
+    <div id="sec-offline" class="section">
+      <div class="section-label">Скачанные</div>
+      <div class="track-list" id="offline-list">
+        <div class="empty"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><p>Нет скачанных треков.<br>Нажми ↓ чтобы скачать</p></div>
       </div>
     </div>
   </div>
@@ -233,7 +244,7 @@
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
       </button>
       <span class="fs-title">Сейчас играет</span>
-      <button class="fs-menu" onclick="downloadCurrent()">
+      <button class="fs-menu" id="fs-menu-btn" onclick="downloadCurrent()">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       </button>
     </div>
@@ -306,6 +317,10 @@
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
       <span>История</span>
     </button>
+    <button class="nav-item" id="nav-offline" onclick="switchTab('offline',null,this)">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <span>Офлайн</span>
+    </button>
   </nav>
 </div>
 
@@ -364,8 +379,49 @@ function seekAudio(e) {
   audio.currentTime = pct * audio.duration;
 }
 
+// ── OPFS ──
+const OPFS_SUPPORTED = 'storage' in navigator && 'getDirectory' in navigator.storage;
+let opfsRoot = null;
+
+async function initOPFS() {
+  if (!OPFS_SUPPORTED) return;
+  try { opfsRoot = await navigator.storage.getDirectory(); } catch(e) { console.warn('OPFS init failed:', e); }
+}
+initOPFS();
+
+async function opfsSave(trackId, arrayBuffer) {
+  if (!opfsRoot) return false;
+  try {
+    const file = await opfsRoot.getFileHandle(trackId + '.mp3', { create: true });
+    const writable = await file.createWritable();
+    await writable.write(arrayBuffer);
+    await writable.close();
+    return true;
+  } catch(e) { console.error('OPFS save error:', e); return false; }
+}
+
+async function opfsLoad(trackId) {
+  if (!opfsRoot) return null;
+  try {
+    const file = await opfsRoot.getFileHandle(trackId + '.mp3');
+    const f = await file.getFile();
+    return URL.createObjectURL(f);
+  } catch(e) { return null; }
+}
+
+async function opfsDelete(trackId) {
+  if (!opfsRoot) return;
+  try { await opfsRoot.removeEntry(trackId + '.mp3'); } catch(e) {}
+}
+
+async function opfsExists(trackId) {
+  if (!opfsRoot) return false;
+  try { await opfsRoot.getFileHandle(trackId + '.mp3'); return true; } catch(e) { return false; }
+}
+
 // ── STATE ──
 let downloaded = new Set(JSON.parse(localStorage.getItem('downloaded') || '[]'));
+let offlineTracks = JSON.parse(localStorage.getItem('offlineTracks') || '[]');
 let tracks = [], favorites = JSON.parse(localStorage.getItem('favs') || '[]');
 let history = JSON.parse(localStorage.getItem('history') || '[]');
 let currentIdx = -1, currentSource = 'all';
@@ -441,7 +497,7 @@ function renderList(containerId, items) {
 
 // ── PLAY ──
 async function playTrack(idx, source = 'all') {
-  const list = source === 'fav' ? favorites : source === 'history' ? history : tracks;
+  const list = source === 'fav' ? favorites : source === 'history' ? history : source === 'offline' ? offlineTracks : tracks;
   if (idx < 0 || idx >= list.length) return;
   currentIdx = idx; currentSource = source;
   nextPreloaded = false;
@@ -462,10 +518,16 @@ async function playTrack(idx, source = 'all') {
     localStorage.setItem('history', JSON.stringify(history));
   }
 
-  showToast('⏳ Загружаю...');
-  const url = `${RAILWAY_URL}/stream?artist=${encodeURIComponent(t.artist)}&name=${encodeURIComponent(t.name)}`;
+  // Проверяем OPFS — если скачан, играем офлайн
+  const offlineUrl = await opfsLoad(t.id);
+  const streamUrl = `${RAILWAY_URL}/stream?artist=${encodeURIComponent(t.artist)}&name=${encodeURIComponent(t.name)}`;
+  const playUrl = offlineUrl || streamUrl;
+  
+  if (offlineUrl) showToast('▶ Офлайн');
+  else showToast('⏳ Загружаю...');
+  
   audio.pause();
-  audio.src = url;
+  audio.src = playUrl;
   audio.load();
   try {
     await audio.play();
@@ -501,6 +563,15 @@ function updateMiniPlayer(t) {
 function updateFsPlayer(t) {
   document.getElementById('fs-name').textContent = t.name;
   document.getElementById('fs-artist').textContent = t.artist;
+  // Обновляем кнопку скачать — галочка если уже скачан
+  const fsMenuBtn = document.getElementById('fs-menu-btn');
+  if (fsMenuBtn) {
+    if (downloaded.has(t.id)) {
+      fsMenuBtn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';
+    } else {
+      fsMenuBtn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+    }
+  }
   document.getElementById('fs-bar-fill').style.width = '0%';
   document.getElementById('fs-cur').textContent = '0:00';
   document.getElementById('fs-dur').textContent = '0:00';
@@ -527,12 +598,12 @@ function updatePlayBtn() {
 }
 
 function prevTrack() {
-  const list = currentSource === 'fav' ? favorites : currentSource === 'history' ? history : tracks;
+  const list = currentSource === 'fav' ? favorites : currentSource === 'history' ? history : currentSource === 'offline' ? offlineTracks : tracks;
   if (currentIdx > 0) playTrack(currentIdx - 1, currentSource);
 }
 
 function nextTrack() {
-  const list = currentSource === 'fav' ? favorites : currentSource === 'history' ? history : tracks;
+  const list = currentSource === 'fav' ? favorites : currentSource === 'history' ? history : currentSource === 'offline' ? offlineTracks : tracks;
   if (isRepeat) { audio.currentTime = 0; audio.play(); return; }
   if (isShuffle) { playTrack(Math.floor(Math.random() * list.length), currentSource); return; }
   if (currentIdx < list.length - 1) playTrack(currentIdx + 1, currentSource);
@@ -546,17 +617,88 @@ function closeFullscreen() {
   document.getElementById('fs-player').classList.remove('open');
 }
 
-// ── DOWNLOAD ──
-function downloadCurrent() {
+// ── DOWNLOAD via OPFS ──
+async function downloadCurrent() {
   const list = currentSource === 'fav' ? favorites : currentSource === 'history' ? history : tracks;
   const t = list[currentIdx];
   if (!t) return;
-  tg?.sendData(JSON.stringify({ action: 'download', name: t.name, artist: t.artist, trackId: t.id }));
-  // Сохраняем как скачанный
-  downloaded.add(t.id);
+  if (downloaded.has(t.id)) { showToast('Уже скачан ✓'); return; }
+
+  // Показываем спиннер на кнопке скачать
+  const fsMenuBtn = document.getElementById('fs-menu-btn');
+  if (fsMenuBtn) fsMenuBtn.innerHTML = '<div class="dl-spinner"></div>';
+
+  showToast('⏳ Скачиваю...');
+  try {
+    const url = `${RAILWAY_URL}/stream?artist=${encodeURIComponent(t.artist)}&name=${encodeURIComponent(t.name)}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Ошибка загрузки');
+    const buffer = await res.arrayBuffer();
+    
+    const saved = await opfsSave(t.id, buffer);
+    if (saved) {
+      downloaded.add(t.id);
+      localStorage.setItem('downloaded', JSON.stringify([...downloaded]));
+      // Сохраняем метаданные трека для офлайн списка
+      if (!offlineTracks.find(o => o.id === t.id)) {
+        offlineTracks.unshift({ id: t.id, name: t.name, artist: t.artist, album: t.album || '', cover: t.cover, dur: t.dur });
+        localStorage.setItem('offlineTracks', JSON.stringify(offlineTracks));
+      }
+      showToast('Скачано ✓');
+      // Меняем кнопку на галочку
+      if (fsMenuBtn) fsMenuBtn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';
+      renderAll();
+      renderOffline();
+    } else {
+      showToast('Ошибка сохранения');
+      if (fsMenuBtn) resetDlBtn();
+    }
+  } catch(e) {
+    console.error('Download error:', e);
+    showToast('Ошибка: ' + e.message);
+    if (fsMenuBtn) resetDlBtn();
+  }
+}
+
+function resetDlBtn() {
+  const btn = document.getElementById('fs-menu-btn');
+  if (btn) btn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+}
+
+async function deleteDownload(trackId) {
+  await opfsDelete(trackId);
+  downloaded.delete(trackId);
   localStorage.setItem('downloaded', JSON.stringify([...downloaded]));
-  showToast('⏳ Скачиваю в чат...');
+  offlineTracks = offlineTracks.filter(t => t.id !== trackId);
+  localStorage.setItem('offlineTracks', JSON.stringify(offlineTracks));
+  showToast('Удалено');
   renderAll();
+  renderOffline();
+}
+
+function renderOffline() {
+  const list = document.getElementById('offline-list');
+  if (!list) return;
+  if (!offlineTracks.length) {
+    list.innerHTML = '<div class="empty"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><p>Нет скачанных треков.<br>Нажми ↓ чтобы скачать</p></div>';
+    return;
+  }
+  list.innerHTML = offlineTracks.map((t, i) => {
+    const isNow = currentSource === 'offline' && currentIdx === i;
+    const coverHtml = t.cover ? `<img src="${t.cover}" loading="lazy">` : '<div class="cover-placeholder"></div>';
+    return `
+    <div class="track-item ${isNow ? 'playing' : ''}" onclick="playTrack(${i},'offline')">
+      <div class="cover">${coverHtml}<div class="playing-indicator"><div class="bars"><div class="bar"></div><div class="bar"></div><div class="bar"></div></div></div></div>
+      <div class="track-info"><div class="track-name">${t.name}</div><div class="track-meta">${t.artist}</div></div>
+      <div class="track-actions">
+        <div class="track-dur">${t.dur || ''}</div>
+        <div class="dl-badge"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <button class="fav-btn" onclick="event.stopPropagation();deleteDownload('${t.id}')" title="Удалить">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+        </button>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 // ── SHUFFLE / REPEAT ──
@@ -625,12 +767,14 @@ function switchTab(tab, tabEl, navEl) {
   if (navEl) { document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active')); navEl.classList.add('active'); }
   if (tab === 'fav') renderList('fav-list', favorites);
   if (tab === 'history') renderList('history-list', history);
+  if (tab === 'offline') renderOffline();
 }
 
 function renderAll() {
   renderList('track-list', tracks);
   renderList('fav-list', favorites);
   renderList('history-list', history);
+  renderOffline();
 }
 
 // ── TOAST ──
