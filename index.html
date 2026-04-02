@@ -518,12 +518,14 @@ async function playTrack(idx, source = 'all') {
     localStorage.setItem('history', JSON.stringify(history));
   }
 
-  // Проверяем OPFS — если скачан, играем офлайн
+  // Проверяем OPFS или R2 — если скачан, играем быстро
   const offlineUrl = await opfsLoad(t.id);
+  const r2Url = t.file_url || null;
   const streamUrl = `${RAILWAY_URL}/stream?artist=${encodeURIComponent(t.artist)}&name=${encodeURIComponent(t.name)}`;
-  const playUrl = offlineUrl || streamUrl;
+  const playUrl = offlineUrl || r2Url || streamUrl;
   
   if (offlineUrl) showToast('▶ Офлайн');
+  else if (r2Url) showToast('▶ Быстрый доступ');
   else showToast('⏳ Загружаю...');
   
   audio.pause();
@@ -617,41 +619,51 @@ function closeFullscreen() {
   document.getElementById('fs-player').classList.remove('open');
 }
 
-// ── DOWNLOAD via OPFS ──
+// ── DOWNLOAD via R2 + Supabase ──
+const USER_ID = tg?.initDataUnsafe?.user?.id || null;
+
 async function downloadCurrent() {
-  const list = currentSource === 'fav' ? favorites : currentSource === 'history' ? history : tracks;
+  const list = currentSource === 'fav' ? favorites : currentSource === 'history' ? history : currentSource === 'offline' ? offlineTracks : tracks;
   const t = list[currentIdx];
   if (!t) return;
   if (downloaded.has(t.id)) { showToast('Уже скачан ✓'); return; }
 
-  // Показываем спиннер на кнопке скачать
   const fsMenuBtn = document.getElementById('fs-menu-btn');
   if (fsMenuBtn) fsMenuBtn.innerHTML = '<div class="dl-spinner"></div>';
-
   showToast('⏳ Скачиваю...');
+
   try {
-    const url = `${RAILWAY_URL}/stream?artist=${encodeURIComponent(t.artist)}&name=${encodeURIComponent(t.name)}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('Ошибка загрузки');
-    const buffer = await res.arrayBuffer();
-    
-    const saved = await opfsSave(t.id, buffer);
-    if (saved) {
-      downloaded.add(t.id);
-      localStorage.setItem('downloaded', JSON.stringify([...downloaded]));
-      // Сохраняем метаданные трека для офлайн списка
-      if (!offlineTracks.find(o => o.id === t.id)) {
-        offlineTracks.unshift({ id: t.id, name: t.name, artist: t.artist, album: t.album || '', cover: t.cover, dur: t.dur });
-        localStorage.setItem('offlineTracks', JSON.stringify(offlineTracks));
-      }
-      showToast('Скачано ✓');
-      // Меняем кнопку на галочку
-      if (fsMenuBtn) fsMenuBtn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';
-      renderAll();
-      renderOffline();
+    if (USER_ID) {
+      // Основной путь — R2 + Supabase
+      const params = new URLSearchParams({
+        user_id: USER_ID,
+        track_id: t.id,
+        artist: t.artist,
+        name: t.name,
+        cover: t.cover || '',
+        album: t.album || '',
+        duration: t.dur || '',
+      });
+      const res = await fetch(`${RAILWAY_URL}/download?${params}`, { method: 'POST' });
+      if (!res.ok) throw new Error('Ошибка сервера');
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || 'Ошибка');
+
+      // Также сохраняем в OPFS для быстрого доступа
+      const audioRes = await fetch(data.file_url);
+      const buffer = await audioRes.arrayBuffer();
+      await opfsSave(t.id, buffer);
+
+      markDownloaded(t);
     } else {
-      showToast('Ошибка сохранения');
-      if (fsMenuBtn) resetDlBtn();
+      // Фолбэк — только OPFS (без user_id)
+      const url = `${RAILWAY_URL}/stream?artist=${encodeURIComponent(t.artist)}&name=${encodeURIComponent(t.name)}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Ошибка загрузки');
+      const buffer = await res.arrayBuffer();
+      const saved = await opfsSave(t.id, buffer);
+      if (!saved) throw new Error('Ошибка сохранения');
+      markDownloaded(t);
     }
   } catch(e) {
     console.error('Download error:', e);
@@ -660,13 +672,32 @@ async function downloadCurrent() {
   }
 }
 
+function markDownloaded(t) {
+  downloaded.add(t.id);
+  localStorage.setItem('downloaded', JSON.stringify([...downloaded]));
+  if (!offlineTracks.find(o => o.id === t.id)) {
+    offlineTracks.unshift({ id: t.id, name: t.name, artist: t.artist, album: t.album || '', cover: t.cover, dur: t.dur });
+    localStorage.setItem('offlineTracks', JSON.stringify(offlineTracks));
+  }
+  showToast('Скачано ✓');
+  const fsMenuBtn = document.getElementById('fs-menu-btn');
+  if (fsMenuBtn) fsMenuBtn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';
+  renderAll();
+  renderOffline();
+}
+
 function resetDlBtn() {
   const btn = document.getElementById('fs-menu-btn');
   if (btn) btn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
 }
 
 async function deleteDownload(trackId) {
+  // Удаляем из OPFS
   await opfsDelete(trackId);
+  // Удаляем из Supabase
+  if (USER_ID) {
+    fetch(`${RAILWAY_URL}/download?user_id=${USER_ID}&track_id=${trackId}`, { method: 'DELETE' }).catch(e => console.warn(e));
+  }
   downloaded.delete(trackId);
   localStorage.setItem('downloaded', JSON.stringify([...downloaded]));
   offlineTracks = offlineTracks.filter(t => t.id !== trackId);
@@ -675,6 +706,33 @@ async function deleteDownload(trackId) {
   renderAll();
   renderOffline();
 }
+
+// Загружаем скачанные треки с сервера при старте
+async function loadDownloadsFromServer() {
+  if (!USER_ID) return;
+  try {
+    const res = await fetch(`${RAILWAY_URL}/downloads?user_id=${USER_ID}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data.downloads || !data.downloads.length) return;
+    // Синхронизируем с локальным состоянием
+    for (const d of data.downloads) {
+      downloaded.add(d.track_id);
+      if (!offlineTracks.find(o => o.id === d.track_id)) {
+        offlineTracks.push({
+          id: d.track_id, name: d.name, artist: d.artist,
+          album: d.album || '', cover: d.cover_url, dur: d.duration,
+          file_url: d.file_url
+        });
+      }
+    }
+    localStorage.setItem('downloaded', JSON.stringify([...downloaded]));
+    localStorage.setItem('offlineTracks', JSON.stringify(offlineTracks));
+    renderAll();
+    renderOffline();
+  } catch(e) { console.warn('Load downloads error:', e); }
+}
+loadDownloadsFromServer();
 
 function renderOffline() {
   const list = document.getElementById('offline-list');
