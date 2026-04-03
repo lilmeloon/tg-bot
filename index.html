@@ -58,6 +58,49 @@
   .track-item.playing .track-name { color: #fff; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
 
+  /* ── ГЛАВНАЯ СТРАНИЦА ── */
+  .home-banner { padding: 20px 20px 16px; flex-shrink: 0; background: #000; }
+  .home-greeting { font-family: "Bebas Neue", sans-serif; font-size: 13px; letter-spacing: 3px; color: #888; text-transform: uppercase; margin-bottom: 4px; }
+  .home-name { font-family: "Bebas Neue", sans-serif; font-size: 28px; letter-spacing: 2px; color: #fff; }
+
+  /* ── ВОЛНА ── */
+  .wave-section { padding: 16px 20px; background: #000; cursor: pointer; position: relative; overflow: hidden; }
+  .wave-section:active { opacity: 0.9; }
+  .wave-label { font-family: "Bebas Neue", sans-serif; font-size: 11px; letter-spacing: 3px; color: #888; text-transform: uppercase; margin-bottom: 6px; }
+  .wave-title { font-family: "Bebas Neue", sans-serif; font-size: 22px; letter-spacing: 2px; color: #fff; margin-bottom: 12px; }
+  .wave-canvas-wrap { height: 60px; position: relative; }
+  canvas#waveCanvas { width: 100%; height: 60px; display: block; }
+  .wave-play-btn { position: absolute; right: 0; top: 50%; transform: translateY(-50%); width: 48px; height: 48px; background: #fff; border-radius: 0; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; }
+  .wave-status { font-size: 11px; color: #666; margin-top: 6px; letter-spacing: 1px; text-transform: uppercase; }
+
+  /* ── СЕКЦИИ ГЛАВНОЙ ── */
+  .home-section { padding: 16px 20px 8px; }
+  .home-section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .home-section-title { font-family: "Bebas Neue", sans-serif; font-size: 16px; letter-spacing: 2px; color: #000; text-transform: uppercase; }
+  .home-section-more { font-size: 11px; color: #888; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; border: none; background: none; }
+
+  /* ── ГОРИЗОНТАЛЬНЫЙ СКРОЛЛ ТРЕКОВ ── */
+  .h-scroll { display: flex; gap: 12px; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; }
+  .h-scroll::-webkit-scrollbar { display: none; }
+  .h-card { width: 130px; flex-shrink: 0; cursor: pointer; }
+  .h-card:active { opacity: 0.8; }
+  .h-card-cover { width: 130px; height: 130px; border-radius: 0; overflow: hidden; border: 2px solid #000; background: #111; margin-bottom: 8px; position: relative; }
+  .h-card-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .h-card-name { font-size: 12px; font-weight: 700; color: #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: 0.3px; }
+  .h-card-artist { font-size: 11px; color: #666; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .h-card-play { position: absolute; bottom: 6px; right: 6px; width: 32px; height: 32px; background: #000; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; }
+  .h-card:active .h-card-play { opacity: 1; }
+
+  /* ── ПЛЕЙЛИСТЫ ── */
+  .playlist-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .playlist-card { background: #000; padding: 14px; cursor: pointer; position: relative; overflow: hidden; min-height: 80px; display: flex; flex-direction: column; justify-content: flex-end; }
+  .playlist-card:active { opacity: 0.85; }
+  .playlist-name { font-family: "Bebas Neue", sans-serif; font-size: 16px; letter-spacing: 1px; color: #fff; }
+  .playlist-count { font-size: 11px; color: #888; margin-top: 2px; }
+  .playlist-add { background: #1a1a1a; border: 2px dashed #333; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 4px; min-height: 80px; cursor: pointer; }
+  .playlist-add svg { color: #555; }
+  .playlist-add span { font-size: 11px; color: #555; letter-spacing: 1px; text-transform: uppercase; }
+
   .dl-badge { width: 18px; height: 18px; border-radius: 50%; background: #000; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .dl-badge svg { display: block; }
   .track-item.playing .dl-badge { background: #fff; }
@@ -183,13 +226,65 @@
     </div>
   </div>
   <div class="tabs">
-    <div class="tab active" onclick="switchTab('all',this)">Все треки</div>
+    <div class="tab active" onclick="switchTab('home',this)">Главная</div>
+    <div class="tab" onclick="switchTab('all',this)">Поиск</div>
     <div class="tab" onclick="switchTab('fav',this)">Избранное</div>
     <div class="tab" onclick="switchTab('history',this)">История</div>
     <div class="tab" onclick="switchTab('offline',this)">Скачанные</div>
   </div>
   <div class="content">
-    <div id="sec-all" class="section active">
+    <div id="sec-home" class="section active">
+      <div class="home-banner" id="home-banner">
+        <div class="home-greeting">Добро пожаловать</div>
+        <div class="home-name" id="home-user-name">LIBAUD</div>
+      </div>
+      <div class="wave-section" onclick="startWave()">
+        <div class="wave-label">Персональное радио</div>
+        <div class="wave-title">МОЯ ВОЛНА</div>
+        <div class="wave-canvas-wrap">
+          <canvas id="waveCanvas"></canvas>
+          <button class="wave-play-btn" onclick="event.stopPropagation();startWave()">
+            <svg id="wave-play-icon" width="18" height="18" viewBox="0 0 24 24" fill="#000"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            <svg id="wave-pause-icon" width="18" height="18" viewBox="0 0 24 24" fill="#000" style="display:none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+          </button>
+        </div>
+        <div class="wave-status" id="wave-status">На основе твоих вкусов</div>
+      </div>
+
+      <div class="home-section">
+        <div class="home-section-header">
+          <div class="home-section-title">AI Рекомендации</div>
+          <button class="home-section-more" onclick="loadAiRecs()">Обновить</button>
+        </div>
+        <div class="h-scroll" id="ai-recs-list">
+          <div style="color:#999;font-size:13px;padding:20px 0">Загружаю...</div>
+        </div>
+      </div>
+
+      <div class="home-section">
+        <div class="home-section-header">
+          <div class="home-section-title">Похожие треки</div>
+          <button class="home-section-more" onclick="loadRelated()">Обновить</button>
+        </div>
+        <div class="h-scroll" id="related-list">
+          <div style="color:#999;font-size:13px;padding:20px 0">Слушай музыку чтобы появились рекомендации</div>
+        </div>
+      </div>
+
+      <div class="home-section" style="padding-bottom:20px;">
+        <div class="home-section-header">
+          <div class="home-section-title">Плейлисты</div>
+        </div>
+        <div class="playlist-grid" id="playlist-grid">
+          <div class="playlist-add" onclick="createPlaylist()">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span>Создать</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="sec-all" class="section">
       <div class="section-label">Результаты</div>
       <div class="track-list" id="track-list">
         <div class="empty"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><p>Введи название трека<br>или исполнителя</p></div>
@@ -312,7 +407,11 @@
   </div>
 
   <nav class="nav">
-    <button class="nav-item active" id="nav-all" onclick="switchTab('all',null,this)">
+    <button class="nav-item active" id="nav-home" onclick="switchTab('home',null,this)">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>Главная</span>
+    </button>
+    <button class="nav-item" id="nav-all" onclick="switchTab('all',null,this)">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <span>Поиск</span>
     </button>
@@ -335,6 +434,205 @@
 
 <script>
 const RAILWAY_URL = 'https://web-production-4beac.up.railway.app';
+
+// ── WAVE ANIMATION ──
+let waveCtx = null, waveAnim = null, waveIsPlaying = false;
+let waveTracks = [], waveIdx = 0;
+
+function initWaveCanvas() {
+  const canvas = document.getElementById('waveCanvas');
+  if (!canvas) return;
+  canvas.width = canvas.offsetWidth * window.devicePixelRatio;
+  canvas.height = 60 * window.devicePixelRatio;
+  canvas.style.width = canvas.offsetWidth + 'px';
+  canvas.style.height = '60px';
+  waveCtx = canvas.getContext('2d');
+  drawWaveIdle();
+}
+
+function drawWaveIdle() {
+  if (!waveCtx) return;
+  const canvas = document.getElementById('waveCanvas');
+  const W = canvas.width, H = canvas.height;
+  waveCtx.clearRect(0, 0, W, H);
+  const bars = 40;
+  const barW = W / bars;
+  const heights = [0.3,0.5,0.4,0.7,0.5,0.6,0.4,0.8,0.5,0.3,0.6,0.7,0.4,0.5,0.3,0.6,0.8,0.5,0.4,0.7,0.3,0.5,0.6,0.4,0.8,0.5,0.3,0.7,0.4,0.6,0.5,0.8,0.3,0.6,0.4,0.7,0.5,0.3,0.6,0.4];
+  for (let i = 0; i < bars; i++) {
+    const h = H * heights[i] * 0.6;
+    const y = (H - h) / 2;
+    waveCtx.fillStyle = '#333';
+    waveCtx.fillRect(i * barW + 1, y, barW - 2, h);
+  }
+}
+
+function animateWave() {
+  if (!waveCtx || !waveIsPlaying) return;
+  const canvas = document.getElementById('waveCanvas');
+  const W = canvas.width, H = canvas.height;
+  waveCtx.clearRect(0, 0, W, H);
+  const bars = 40;
+  const barW = W / bars;
+  const t = Date.now() / 200;
+  for (let i = 0; i < bars; i++) {
+    const h = H * (0.2 + 0.6 * Math.abs(Math.sin(t + i * 0.4)));
+    const y = (H - h) / 2;
+    const progress = audio.currentTime / (audio.duration || 1);
+    const isPlayed = i / bars < progress;
+    waveCtx.fillStyle = isPlayed ? '#fff' : '#555';
+    waveCtx.fillRect(i * barW + 1, y, barW - 2, h);
+  }
+  waveAnim = requestAnimationFrame(animateWave);
+}
+
+async function startWave() {
+  if (waveIsPlaying && waveTracks.length > 0) {
+    togglePlay();
+    waveIsPlaying = audio.paused ? false : true;
+    updateWaveBtn();
+    return;
+  }
+  document.getElementById('wave-status').textContent = 'Подбираю треки...';
+  const historyArtists = [...new Set(history.slice(0, 10).map(t => t.artist))];
+  if (!historyArtists.length) {
+    document.getElementById('wave-status').textContent = 'Сначала послушай несколько треков';
+    return;
+  }
+  try {
+    const res = await fetch(`/api/search?action=wave&artists=${encodeURIComponent(historyArtists.join(','))}&limit=20`);
+    const data = await res.json();
+    if (!data.tracks?.length) { document.getElementById('wave-status').textContent = 'Не удалось загрузить'; return; }
+    waveTracks = data.tracks;
+    tracks = waveTracks;
+    currentSource = 'all';
+    waveIsPlaying = true;
+    updateWaveBtn();
+    document.getElementById('wave-status').textContent = `${waveTracks.length} треков · На основе твоих вкусов`;
+    cancelAnimationFrame(waveAnim);
+    animateWave();
+    await playTrack(0, 'all');
+  } catch(e) {
+    document.getElementById('wave-status').textContent = 'Ошибка загрузки';
+  }
+}
+
+function updateWaveBtn() {
+  const pi = document.getElementById('wave-play-icon');
+  const pa = document.getElementById('wave-pause-icon');
+  if (pi) pi.style.display = waveIsPlaying ? 'none' : 'block';
+  if (pa) pa.style.display = waveIsPlaying ? 'block' : 'none';
+}
+
+// ── AI РЕКОМЕНДАЦИИ ──
+async function loadAiRecs() {
+  const container = document.getElementById('ai-recs-list');
+  if (!container) return;
+  const historyArtists = [...new Set(history.slice(0, 15).map(t => t.artist))];
+  if (!historyArtists.length) {
+    container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Слушай музыку чтобы появились рекомендации</div>';
+    return;
+  }
+  container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Спрашиваю AI...</div>';
+  try {
+    const res = await fetch(`/api/search?action=ai_recommend&artists=${encodeURIComponent(historyArtists.join(','))}`);
+    const data = await res.json();
+    renderHScroll('ai-recs-list', data.tracks || []);
+  } catch(e) {
+    container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Ошибка загрузки</div>';
+  }
+}
+
+// ── ПОХОЖИЕ ТРЕКИ ──
+async function loadRelated() {
+  const container = document.getElementById('related-list');
+  if (!container) return;
+  const lastTrack = history[0];
+  if (!lastTrack) {
+    container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Слушай музыку чтобы появились рекомендации</div>';
+    return;
+  }
+  container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Ищу похожее...</div>';
+  try {
+    const res = await fetch(`/api/search?action=related&track=${encodeURIComponent(lastTrack.artist + ' ' + lastTrack.name)}&limit=10`);
+    const data = await res.json();
+    renderHScroll('related-list', data.tracks || []);
+  } catch(e) {
+    container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Ошибка загрузки</div>';
+  }
+}
+
+function renderHScroll(containerId, items) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  if (!items.length) {
+    container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Ничего не найдено</div>';
+    return;
+  }
+  // Добавляем треки во временный список
+  const tempIdx = 9000;
+  container.innerHTML = items.map((t, i) => {
+    const coverHtml = t.cover ? `<img src="${t.cover}" loading="lazy" style="width:100%;height:100%;object-fit:cover;">` : '<div style="width:100%;height:100%;background:#111;"></div>';
+    return `
+    <div class="h-card" onclick="playFromHome(${i}, '${containerId}')">
+      <div class="h-card-cover">
+        ${coverHtml}
+        <div class="h-card-play">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        </div>
+      </div>
+      <div class="h-card-name">${t.name}</div>
+      <div class="h-card-artist">${t.artist}</div>
+    </div>`;
+  }).join('');
+  // Сохраняем треки для воспроизведения
+  container._tracks = items;
+}
+
+function playFromHome(idx, containerId) {
+  const container = document.getElementById(containerId);
+  if (!container || !container._tracks) return;
+  tracks = container._tracks;
+  currentSource = 'all';
+  playTrack(idx, 'all');
+}
+
+// ── ПЛЕЙЛИСТЫ ──
+let playlists = JSON.parse(localStorage.getItem('playlists') || '[]');
+
+function renderPlaylists() {
+  const grid = document.getElementById('playlist-grid');
+  if (!grid) return;
+  const items = playlists.map((p, i) => `
+    <div class="playlist-card" onclick="openPlaylist(${i})">
+      <div class="playlist-name">${p.name}</div>
+      <div class="playlist-count">${p.tracks.length} треков</div>
+    </div>`).join('');
+  grid.innerHTML = items + `
+    <div class="playlist-add" onclick="createPlaylist()">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      <span>Создать</span>
+    </div>`;
+}
+
+function createPlaylist() {
+  const name = prompt('Название плейлиста:');
+  if (!name) return;
+  playlists.unshift({ name, tracks: [] });
+  localStorage.setItem('playlists', JSON.stringify(playlists));
+  renderPlaylists();
+  showToast('Плейлист создан');
+}
+
+function openPlaylist(idx) {
+  const p = playlists[idx];
+  if (!p) return;
+  tracks = p.tracks;
+  currentSource = 'all';
+  renderList('track-list', tracks);
+  switchTab('all', null, document.getElementById('nav-all'));
+  document.querySelectorAll('.tab').forEach((t, i) => { if (i === 1) t.classList.add('active'); else t.classList.remove('active'); });
+  showToast(`📂 ${p.name}`);
+}
 const tg = window.Telegram?.WebApp;
 if (tg) { tg.expand(); tg.setHeaderColor('#0a0a0a'); tg.setBackgroundColor('#0a0a0a'); }
 const user = tg?.initDataUnsafe?.user;
@@ -347,6 +645,8 @@ if (user) {
     img.style.display = 'block';
     if (letter) letter.style.display = 'none';
   }
+  const homeNameEl = document.getElementById('home-user-name');
+  if (homeNameEl && user.first_name) homeNameEl.textContent = user.first_name.toUpperCase();
 }
 
 // ── АУДИО ──
@@ -374,7 +674,14 @@ audio.addEventListener('timeupdate', () => {
   if (audio.duration - audio.currentTime < 20) preloadNext();
 });
 
-audio.addEventListener('ended', nextTrack);
+audio.addEventListener('ended', () => {
+  if (waveIsPlaying && currentIdx >= tracks.length - 1) {
+    // Волна закончилась — загружаем ещё
+    startWave();
+  } else {
+    nextTrack();
+  }
+});
 audio.addEventListener('playing', updatePlayBtn);
 audio.addEventListener('pause', updatePlayBtn);
 
@@ -741,6 +1048,16 @@ async function loadDownloadsFromServer() {
 }
 loadDownloadsFromServer();
 
+// Инициализация главной страницы
+setTimeout(() => {
+  initWaveCanvas();
+  renderPlaylists();
+  if (history.length > 0) {
+    loadRelated();
+    loadAiRecs();
+  }
+}, 500);
+
 function renderOffline() {
   const list = document.getElementById('offline-list');
   if (!list) return;
@@ -833,6 +1150,12 @@ function switchTab(tab, tabEl, navEl) {
   if (tab === 'fav') renderList('fav-list', favorites);
   if (tab === 'history') renderList('history-list', history);
   if (tab === 'offline') renderOffline();
+  if (tab === 'home') {
+    initWaveCanvas();
+    renderPlaylists();
+    loadRelated();
+    loadAiRecs();
+  }
 }
 
 function renderAll() {
