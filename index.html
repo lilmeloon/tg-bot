@@ -203,7 +203,28 @@
   .nav-item.active { color: #000; }
   .nav-item span { font-size: 10px; font-weight: 500; }
 
-  .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #000; color: #fff; padding: 10px 20px; border-radius: 0; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; font-weight: 700; white-space: nowrap; opacity: 0; transition: opacity 0.3s; z-index: 999; pointer-events: none; border: 2px solid #000; }
+  /* ── ПОИСК ВНУТРИ СЕКЦИИ ── */
+  .search-box { background: #fafaf7; border-radius: var(--radius); display: flex; align-items: center; gap: 10px; padding: 11px 14px; border: var(--border); }
+  .search-box:focus-within { box-shadow: 2px 2px 0 #000; }
+  .search-box input { background: none; border: none; outline: none; color: #000; font-family: 'Space Grotesk', sans-serif; font-size: 14px; width: 100%; font-weight: 500; }
+  .search-box input::placeholder { color: var(--text3); }
+  #clear-btn { display: none; cursor: pointer; color: var(--text3); background: none; border: none; }
+  #clear-btn.visible { display: flex; }
+
+  /* ── ТАБЫ ИЗБРАННОГО ── */
+  .fav-tabs { display: flex; gap: 0; margin-bottom: 14px; margin-top: 4px; border-bottom: 2px solid #000; }
+  .fav-tab { flex: 1; padding: 10px; font-family: "Bebas Neue", sans-serif; font-size: 14px; letter-spacing: 2px; text-transform: uppercase; background: none; border: none; cursor: pointer; color: #888; transition: all 0.15s; }
+  .fav-tab.active { color: #000; border-bottom: 3px solid #000; margin-bottom: -2px; }
+
+  /* ── ВОЛНА С ГИФКОЙ ── */
+  .wave-gif-wrap { display: flex; align-items: center; justify-content: center; position: relative; height: 140px; margin: 0 auto; }
+  .wave-gif { width: 140px; height: 140px; object-fit: contain; transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s; transform: scale(0.5); opacity: 0.6; cursor: pointer; }
+  .wave-gif.playing { transform: scale(1); opacity: 1; }
+  .wave-gif-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+  .wave-play-ring { width: 52px; height: 52px; background: rgba(255,255,255,0.15); border: 2px solid rgba(255,255,255,0.4); border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: opacity 0.3s; }
+  .wave-gif.playing + .wave-gif-overlay .wave-play-ring { opacity: 0; }
+
+  .toast { position: fixed;  .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #000; color: #fff; padding: 10px 20px; border-radius: 0; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; font-weight: 700; white-space: nowrap; opacity: 0; transition: opacity 0.3s; z-index: 999; pointer-events: none; border: 2px solid #000; }
   .toast.show { opacity: 1; }
 </style>
 </head>
@@ -216,40 +237,26 @@
       <span id="avatar-letter">?</span>
     </div>
   </div>
-  <div class="search-wrap">
-    <div class="search-box">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input type="text" id="search-input" placeholder="Исполнитель, трек...">
-      <button id="clear-btn" onclick="clearSearch()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </div>
-  </div>
-  <div class="tabs">
-    <div class="tab active" onclick="switchTab('home',this)">Главная</div>
-    <div class="tab" onclick="switchTab('all',this)">Поиск</div>
-    <div class="tab" onclick="switchTab('fav',this)">Избранное</div>
-    <div class="tab" onclick="switchTab('history',this)">История</div>
-    <div class="tab" onclick="switchTab('offline',this)">Скачанные</div>
-  </div>
+
   <div class="content">
     <div id="sec-home" class="section active">
       <div class="home-banner" id="home-banner">
         <div class="home-greeting">Добро пожаловать</div>
         <div class="home-name" id="home-user-name">LIBAUD</div>
       </div>
-      <div class="wave-section">
+      <div class="wave-section" style="text-align:center;padding:16px 20px 20px;">
         <div class="wave-label">Персональное радио</div>
         <div class="wave-title">LIBAUD FM</div>
-        <div class="wave-canvas-wrap">
-          <canvas id="waveCanvas"></canvas>
-          <button class="wave-play-btn" onclick="startWave()">
-            <svg id="wave-play-icon" width="18" height="18" viewBox="0 0 24 24" fill="#000"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-            <svg id="wave-pause-icon" width="18" height="18" viewBox="0 0 24 24" fill="#000" style="display:none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-          </button>
+        <div class="wave-gif-wrap" onclick="startWave()">
+          <img id="waveGif" class="wave-gif" src="/wave.gif" alt="wave">
+          <div class="wave-gif-overlay">
+            <div class="wave-play-ring">
+              <svg id="wave-play-icon" width="18" height="18" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              <svg id="wave-pause-icon" width="18" height="18" viewBox="0 0 24 24" fill="#fff" style="display:none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+            </div>
+          </div>
         </div>
         <div class="wave-status" id="wave-status">На основе твоих вкусов</div>
-        <div style="position:absolute;inset:0;cursor:pointer;" onclick="startWave()"></div>
       </div>
 
       <div class="home-section">
@@ -286,29 +293,42 @@
     </div>
 
     <div id="sec-all" class="section">
-      <div class="section-label">Результаты</div>
-      <div class="track-list" id="track-list">
-        <div class="empty"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><p>Введи название трека<br>или исполнителя</p></div>
+      <div class="search-wrap" style="padding:14px 0 10px;">
+        <div class="search-box">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="search-input" placeholder="Исполнитель, трек...">
+          <button id="clear-btn" onclick="clearSearch()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+      </div>
+      <div id="search-results">
+        <div class="section-label" style="display:flex;align-items:center;justify-content:space-between;">
+          <span id="search-label">История</span>
+        </div>
+        <div class="track-list" id="track-list">
+          <div class="empty"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><p>Введи название трека<br>или исполнителя</p></div>
+        </div>
       </div>
     </div>
     <div id="sec-fav" class="section">
-      <div class="section-label">Избранное</div>
-      <div class="track-list" id="fav-list">
-        <div class="empty"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><p>Нет избранных треков</p></div>
+      <div class="fav-tabs">
+        <button class="fav-tab active" onclick="switchFavTab('fav',this)">Избранное</button>
+        <button class="fav-tab" onclick="switchFavTab('offline',this)">Скачанные</button>
+      </div>
+      <div id="fav-content">
+        <div class="track-list" id="fav-list">
+          <div class="empty"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><p>Нет избранных треков</p></div>
+        </div>
+      </div>
+      <div id="offline-content" style="display:none">
+        <div class="track-list" id="offline-list">
+          <div class="empty"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><p>Нет скачанных треков</p></div>
+        </div>
       </div>
     </div>
-    <div id="sec-history" class="section">
-      <div class="section-label">История</div>
-      <div class="track-list" id="history-list">
-        <div class="empty"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><p>История пуста</p></div>
-      </div>
-    </div>
-    <div id="sec-offline" class="section">
-      <div class="section-label">Скачанные</div>
-      <div class="track-list" id="offline-list">
-        <div class="empty"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><p>Нет скачанных треков.<br>Нажми ↓ чтобы скачать</p></div>
-      </div>
-    </div>
+    <div id="sec-history" class="section" style="display:none"></div>
+    <div id="sec-offline" class="section" style="display:none"></div>
   </div>
 
   <!-- MINI PLAYER -->
@@ -396,6 +416,10 @@
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         Скачать
       </button>
+      <button class="fs-action" id="fs-dislike" onclick="dislikeCurrent()">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3z"/><line x1="17" y1="2" x2="17" y2="11"/></svg>
+        Не нравится
+      </button>
       <button class="fs-action" id="fs-shuffle" onclick="toggleShuffle()">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
         Случайно
@@ -419,14 +443,6 @@
     <button class="nav-item" id="nav-fav" onclick="switchTab('fav',null,this)">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
       <span>Избранное</span>
-    </button>
-    <button class="nav-item" id="nav-history" onclick="switchTab('history',null,this)">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-      <span>История</span>
-    </button>
-    <button class="nav-item" id="nav-offline" onclick="switchTab('offline',null,this)">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      <span>Офлайн</span>
     </button>
   </nav>
 </div>
@@ -494,13 +510,26 @@ async function startWave() {
     return;
   }
   document.getElementById('wave-status').textContent = 'Подбираю треки...';
-  const historyArtists = [...new Set(history.slice(0, 10).map(t => t.artist))];
-  if (!historyArtists.length) {
+  // Умный алгоритм: избранное (вес 3) + частые (3+) прослушивания (вес 2) + история (вес 1)
+  const favArtists = [...new Set(favorites.map(t => t.artist))];
+  const frequentArtists = Object.entries(artistPlayCount)
+    .filter(([a, c]) => c >= 3 && !blockedArtists.has(a))
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([a]) => a);
+  const historyArtists = [...new Set(history.slice(0, 20).map(t => t.artist))].filter(a => !blockedArtists.has(a));
+
+  // Приоритет: избранное > частые > история
+  const seedArtists = [...new Set([...favArtists, ...frequentArtists, ...historyArtists])]
+    .filter(a => !blockedArtists.has(a))
+    .slice(0, 10);
+
+  if (!seedArtists.length) {
     document.getElementById('wave-status').textContent = 'Сначала послушай несколько треков';
     return;
   }
   try {
-    const res = await fetch(`/api/search?action=wave&artists=${encodeURIComponent(historyArtists.join(','))}&limit=20`);
+    const res = await fetch(`/api/search?action=wave&artists=${encodeURIComponent(seedArtists.join(','))}&limit=20&blocked=${encodeURIComponent([...blockedArtists].join(','))}`);
     const data = await res.json();
     if (!data.tracks?.length) { document.getElementById('wave-status').textContent = 'Не удалось загрузить'; return; }
     waveTracks = data.tracks;
@@ -520,8 +549,10 @@ async function startWave() {
 function updateWaveBtn() {
   const pi = document.getElementById('wave-play-icon');
   const pa = document.getElementById('wave-pause-icon');
+  const gif = document.getElementById('waveGif');
   if (pi) pi.style.display = waveIsPlaying ? 'none' : 'block';
   if (pa) pa.style.display = waveIsPlaying ? 'block' : 'none';
+  if (gif) gif.classList.toggle('playing', waveIsPlaying);
 }
 
 // ── AI РЕКОМЕНДАЦИИ ──
@@ -742,34 +773,47 @@ let currentIdx = -1, currentSource = 'all';
 let searchTimer = null;
 let isShuffle = false, isRepeat = false;
 let nextPreloaded = false;
-// Волна хранится отдельно чтобы не перезаписывать tracks
 let waveQueue = [];
+// Заблокированные артисты
+let blockedArtists = new Set(JSON.parse(localStorage.getItem('blockedArtists') || '[]'));
+// Счётчик прослушиваний артистов
+let artistPlayCount = JSON.parse(localStorage.getItem('artistPlayCount') || '{}');
 
 // ── SEARCH ──
 const searchInput = document.getElementById('search-input');
-// Убираем клавиатуру при тапе вне поиска
 document.getElementById('app').addEventListener('touchstart', (e) => {
-  if (!e.target.closest('.search-wrap')) {
-    searchInput.blur();
+  if (!e.target.closest('.search-wrap') && !e.target.closest('#sec-all')) {
+    if (searchInput) searchInput.blur();
   }
 }, { passive: true });
 
-searchInput.addEventListener('input', () => {
-  document.getElementById('clear-btn').classList.toggle('visible', searchInput.value.length > 0);
-  clearTimeout(searchTimer);
-  if (searchInput.value.trim().length < 2) return;
-  searchTimer = setTimeout(() => doSearch(searchInput.value.trim()), 500);
-});
+if (searchInput) {
+  searchInput.addEventListener('input', () => {
+    document.getElementById('clear-btn').classList.toggle('visible', searchInput.value.length > 0);
+    clearTimeout(searchTimer);
+    const val = searchInput.value.trim();
+    if (!val) { showHistoryInSearch(); return; }
+    if (val.length < 2) return;
+    searchTimer = setTimeout(() => doSearch(val), 500);
+  });
+}
 
 function clearSearch() {
-  searchInput.value = '';
+  if (searchInput) searchInput.value = '';
   document.getElementById('clear-btn').classList.remove('visible');
-  tracks = [];
-  renderList('track-list', tracks);
+  showHistoryInSearch();
+}
+
+function showHistoryInSearch() {
+  const label = document.getElementById('search-label');
+  if (label) label.textContent = 'История';
+  renderList('track-list', history.slice(0, 15));
 }
 
 async function doSearch(query) {
   const list = document.getElementById('track-list');
+  const label = document.getElementById('search-label');
+  if (label) label.textContent = 'Результаты';
   list.innerHTML = '<div class="empty"><p>Ищу треки...</p></div>';
   try {
     const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
@@ -830,9 +874,12 @@ async function playTrack(idx, source = 'all') {
 
   if (!history.find(h => h.id === t.id)) {
     history.unshift(t);
-    if (history.length > 30) history.pop();
+    if (history.length > 50) history.pop();
     localStorage.setItem('history', JSON.stringify(history));
   }
+  // Счётчик артистов
+  artistPlayCount[t.artist] = (artistPlayCount[t.artist] || 0) + 1;
+  localStorage.setItem('artistPlayCount', JSON.stringify(artistPlayCount));
 
   // Проверяем OPFS или R2 — если скачан, играем быстро
   const offlineUrl = await opfsLoad(t.id);
@@ -1086,6 +1133,17 @@ function renderOffline() {
   }).join('');
 }
 
+// ── DISLIKE / BLOCK ──
+function dislikeCurrent() {
+  const list = currentSource === 'wave' ? waveQueue : currentSource === 'fav' ? favorites : currentSource === 'offline' ? offlineTracks : tracks;
+  const t = list[currentIdx];
+  if (!t) return;
+  blockedArtists.add(t.artist);
+  localStorage.setItem('blockedArtists', JSON.stringify([...blockedArtists]));
+  showToast(`🚫 ${t.artist} заблокирован`);
+  nextTrack();
+}
+
 // ── SHUFFLE / REPEAT ──
 function toggleShuffle() {
   isShuffle = !isShuffle;
@@ -1145,16 +1203,28 @@ function updateMediaSession(t) {
 }
 
 // ── TABS ──
+function switchFavTab(tab, el) {
+  document.querySelectorAll('.fav-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('fav-content').style.display = tab === 'fav' ? 'block' : 'none';
+  document.getElementById('offline-content').style.display = tab === 'offline' ? 'block' : 'none';
+  if (tab === 'fav') renderList('fav-list', favorites);
+  if (tab === 'offline') renderOffline();
+}
+
 function switchTab(tab, tabEl, navEl) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.getElementById('sec-' + tab).classList.add('active');
   if (tabEl) { document.querySelectorAll('.tab').forEach(t => t.classList.remove('active')); tabEl.classList.add('active'); }
   if (navEl) { document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active')); navEl.classList.add('active'); }
-  if (tab === 'fav') renderList('fav-list', favorites);
-  if (tab === 'history') renderList('history-list', history);
-  if (tab === 'offline') renderOffline();
+  if (tab === 'fav') { renderList('fav-list', favorites); }
+  if (tab === 'all') {
+    // Показываем историю пока нет поиска
+    const inp = document.getElementById('search-input');
+    if (inp) inp.focus();
+    showHistoryInSearch();
+  }
   if (tab === 'home') {
-    initWaveCanvas();
     renderPlaylists();
     loadRelated();
     loadAiRecs();
