@@ -64,13 +64,13 @@
   .home-name { font-family: "Bebas Neue", sans-serif; font-size: 28px; letter-spacing: 2px; color: #fff; }
 
   /* ── ВОЛНА ── */
-  .wave-section { padding: 16px 20px; background: #000; cursor: pointer; position: relative; overflow: hidden; }
+  .wave-section { padding: 16px 20px; background: #000; cursor: pointer; position: relative; overflow: visible; }
   .wave-section:active { opacity: 0.9; }
   .wave-label { font-family: "Bebas Neue", sans-serif; font-size: 11px; letter-spacing: 3px; color: #888; text-transform: uppercase; margin-bottom: 6px; }
   .wave-title { font-family: "Bebas Neue", sans-serif; font-size: 22px; letter-spacing: 2px; color: #fff; margin-bottom: 12px; }
-  .wave-canvas-wrap { height: 60px; position: relative; }
-  canvas#waveCanvas { width: 100%; height: 60px; display: block; }
-  .wave-play-btn { position: absolute; right: 0; top: 50%; transform: translateY(-50%); width: 48px; height: 48px; background: #fff; border-radius: 0; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; }
+  .wave-canvas-wrap { height: 60px; position: relative; z-index: 1; }
+  canvas#waveCanvas { width: 100%; height: 60px; display: block; pointer-events: none; }
+  .wave-play-btn { position: absolute; right: 0; top: 50%; transform: translateY(-50%); width: 48px; height: 48px; background: #fff; border-radius: 0; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; z-index: 10; }
   .wave-status { font-size: 11px; color: #666; margin-top: 6px; letter-spacing: 1px; text-transform: uppercase; }
 
   /* ── СЕКЦИИ ГЛАВНОЙ ── */
@@ -238,17 +238,18 @@
         <div class="home-greeting">Добро пожаловать</div>
         <div class="home-name" id="home-user-name">LIBAUD</div>
       </div>
-      <div class="wave-section" onclick="startWave()">
+      <div class="wave-section">
         <div class="wave-label">Персональное радио</div>
-        <div class="wave-title">МОЯ ВОЛНА</div>
+        <div class="wave-title">LIBAUD FM</div>
         <div class="wave-canvas-wrap">
           <canvas id="waveCanvas"></canvas>
-          <button class="wave-play-btn" onclick="event.stopPropagation();startWave()">
+          <button class="wave-play-btn" onclick="startWave()">
             <svg id="wave-play-icon" width="18" height="18" viewBox="0 0 24 24" fill="#000"><polygon points="5 3 19 12 5 21 5 3"/></svg>
             <svg id="wave-pause-icon" width="18" height="18" viewBox="0 0 24 24" fill="#000" style="display:none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
           </button>
         </div>
         <div class="wave-status" id="wave-status">На основе твоих вкусов</div>
+        <div style="position:absolute;inset:0;cursor:pointer;" onclick="startWave()"></div>
       </div>
 
       <div class="home-section">
