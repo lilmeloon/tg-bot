@@ -504,14 +504,14 @@ async function startWave() {
     const data = await res.json();
     if (!data.tracks?.length) { document.getElementById('wave-status').textContent = 'Не удалось загрузить'; return; }
     waveTracks = data.tracks;
-    tracks = waveTracks;
-    currentSource = 'all';
+    waveQueue = data.tracks;
+    currentSource = 'wave';
     waveIsPlaying = true;
     updateWaveBtn();
-    document.getElementById('wave-status').textContent = `${waveTracks.length} треков · На основе твоих вкусов`;
+    document.getElementById('wave-status').textContent = `${waveTracks.length} треков · LIBAUD FM`;
     cancelAnimationFrame(waveAnim);
     animateWave();
-    await playTrack(0, 'all');
+    await playTrack(0, 'wave');
   } catch(e) {
     document.getElementById('wave-status').textContent = 'Ошибка загрузки';
   }
@@ -676,9 +676,8 @@ audio.addEventListener('timeupdate', () => {
 });
 
 audio.addEventListener('ended', () => {
-  if (waveIsPlaying && currentIdx >= tracks.length - 1) {
-    // Волна закончилась — загружаем ещё
-    startWave();
+  if (currentSource === 'wave' && currentIdx >= waveQueue.length - 1) {
+    startWave(); // Загружаем новую порцию
   } else {
     nextTrack();
   }
@@ -743,6 +742,8 @@ let currentIdx = -1, currentSource = 'all';
 let searchTimer = null;
 let isShuffle = false, isRepeat = false;
 let nextPreloaded = false;
+// Волна хранится отдельно чтобы не перезаписывать tracks
+let waveQueue = [];
 
 // ── SEARCH ──
 const searchInput = document.getElementById('search-input');
@@ -812,7 +813,7 @@ function renderList(containerId, items) {
 
 // ── PLAY ──
 async function playTrack(idx, source = 'all') {
-  const list = source === 'fav' ? favorites : source === 'history' ? history : source === 'offline' ? offlineTracks : tracks;
+  const list = source === 'fav' ? favorites : source === 'history' ? history : source === 'offline' ? offlineTracks : source === 'wave' ? waveQueue : tracks;
   if (idx < 0 || idx >= list.length) return;
   currentIdx = idx; currentSource = source;
   nextPreloaded = false;
@@ -851,6 +852,7 @@ async function playTrack(idx, source = 'all') {
     showToast('');
     updateMediaSession(t);
   } catch(e) {
+    if (e.name === 'AbortError') return;
     console.error('Play error:', e);
     showToast('Ошибка: ' + e.message);
   }
@@ -915,12 +917,12 @@ function updatePlayBtn() {
 }
 
 function prevTrack() {
-  const list = currentSource === 'fav' ? favorites : currentSource === 'history' ? history : currentSource === 'offline' ? offlineTracks : tracks;
+  const list = currentSource === 'fav' ? favorites : currentSource === 'history' ? history : currentSource === 'offline' ? offlineTracks : currentSource === 'wave' ? waveQueue : tracks;
   if (currentIdx > 0) playTrack(currentIdx - 1, currentSource);
 }
 
 function nextTrack() {
-  const list = currentSource === 'fav' ? favorites : currentSource === 'history' ? history : currentSource === 'offline' ? offlineTracks : tracks;
+  const list = currentSource === 'fav' ? favorites : currentSource === 'history' ? history : currentSource === 'offline' ? offlineTracks : currentSource === 'wave' ? waveQueue : tracks;
   if (isRepeat) { audio.currentTime = 0; audio.play(); return; }
   if (isShuffle) { playTrack(Math.floor(Math.random() * list.length), currentSource); return; }
   if (currentIdx < list.length - 1) playTrack(currentIdx + 1, currentSource);
@@ -1108,7 +1110,7 @@ function toggleFav(id, source, idx) {
 }
 
 function toggleFavCurrent() {
-  const list = currentSource === 'fav' ? favorites : currentSource === 'history' ? history : tracks;
+  const list = currentSource === 'fav' ? favorites : currentSource === 'history' ? history : currentSource === 'wave' ? waveQueue : currentSource === 'offline' ? offlineTracks : tracks;
   if (currentIdx < 0 || !list[currentIdx]) return;
   const t = list[currentIdx];
   const fi = favorites.findIndex(f => f.id === t.id);
