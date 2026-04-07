@@ -63,15 +63,41 @@
   .home-greeting { font-family: "Bebas Neue", sans-serif; font-size: 13px; letter-spacing: 3px; color: #888; text-transform: uppercase; margin-bottom: 4px; }
   .home-name { font-family: "Bebas Neue", sans-serif; font-size: 28px; letter-spacing: 2px; color: #fff; }
 
-  /* ── ВОЛНА ── */
-  .wave-section { padding: 16px 20px; background: #000; cursor: pointer; position: relative; overflow: visible; }
-  .wave-section:active { opacity: 0.9; }
-  .wave-label { font-family: "Bebas Neue", sans-serif; font-size: 11px; letter-spacing: 3px; color: #888; text-transform: uppercase; margin-bottom: 6px; }
-  .wave-title { font-family: "Bebas Neue", sans-serif; font-size: 22px; letter-spacing: 2px; color: #fff; margin-bottom: 12px; }
-  .wave-canvas-wrap { height: 60px; position: relative; z-index: 1; }
-  canvas#waveCanvas { width: 100%; height: 60px; display: block; pointer-events: none; }
-  .wave-play-btn { position: absolute; right: 0; top: 50%; transform: translateY(-50%); width: 48px; height: 48px; background: #fff; border-radius: 0; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; z-index: 10; }
-  .wave-status { font-size: 11px; color: #666; margin-top: 6px; letter-spacing: 1px; text-transform: uppercase; }
+  /* ── ВОЛНА С ГИФКОЙ ── */
+  .wave-section { background: #000; cursor: pointer; position: relative; text-align: center; padding: 16px 20px 20px; }
+  .wave-label { font-family: "Bebas Neue", sans-serif; font-size: 11px; letter-spacing: 3px; color: #888; text-transform: uppercase; margin-bottom: 4px; }
+  .wave-title { font-family: "Bebas Neue", sans-serif; font-size: 22px; letter-spacing: 2px; color: #fff; margin-bottom: 8px; }
+  .wave-gif-wrap { position: relative; width: 200px; height: 200px; margin: 0 auto; display: flex; align-items: center; justify-content: center; }
+  .wave-gif {
+    width: 200px; height: 200px;
+    object-fit: contain;
+    display: block;
+    transition: transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.5s, opacity 0.4s;
+    transform: scale(0.3);
+    opacity: 0.5;
+    filter: brightness(0.6);
+    pointer-events: none;
+  }
+  .wave-gif.playing {
+    transform: scale(1);
+    opacity: 1;
+    filter: brightness(1.2);
+  }
+  .wave-play-ring {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: none;
+    transition: opacity 0.4s;
+  }
+  .wave-play-ring-inner {
+    width: 48px; height: 48px;
+    background: rgba(255,255,255,0.15);
+    border: 2px solid rgba(255,255,255,0.5);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .wave-gif.playing ~ .wave-play-ring { opacity: 0; }
+  .wave-status { font-size: 11px; color: #666; margin-top: 8px; letter-spacing: 1px; text-transform: uppercase; }
 
   /* ── СЕКЦИИ ГЛАВНОЙ ── */
   .home-section { padding: 16px 20px 8px; }
@@ -452,55 +478,9 @@
 <script>
 const RAILWAY_URL = 'https://web-production-4beac.up.railway.app';
 
-// ── WAVE ANIMATION ──
-let waveCtx = null, waveAnim = null, waveIsPlaying = false;
+// ── WAVE ──
+let waveIsPlaying = false;
 let waveTracks = [], waveIdx = 0;
-
-function initWaveCanvas() {
-  const canvas = document.getElementById('waveCanvas');
-  if (!canvas) return;
-  canvas.width = canvas.offsetWidth * window.devicePixelRatio;
-  canvas.height = 60 * window.devicePixelRatio;
-  canvas.style.width = canvas.offsetWidth + 'px';
-  canvas.style.height = '60px';
-  waveCtx = canvas.getContext('2d');
-  drawWaveIdle();
-}
-
-function drawWaveIdle() {
-  if (!waveCtx) return;
-  const canvas = document.getElementById('waveCanvas');
-  const W = canvas.width, H = canvas.height;
-  waveCtx.clearRect(0, 0, W, H);
-  const bars = 40;
-  const barW = W / bars;
-  const heights = [0.3,0.5,0.4,0.7,0.5,0.6,0.4,0.8,0.5,0.3,0.6,0.7,0.4,0.5,0.3,0.6,0.8,0.5,0.4,0.7,0.3,0.5,0.6,0.4,0.8,0.5,0.3,0.7,0.4,0.6,0.5,0.8,0.3,0.6,0.4,0.7,0.5,0.3,0.6,0.4];
-  for (let i = 0; i < bars; i++) {
-    const h = H * heights[i] * 0.6;
-    const y = (H - h) / 2;
-    waveCtx.fillStyle = '#333';
-    waveCtx.fillRect(i * barW + 1, y, barW - 2, h);
-  }
-}
-
-function animateWave() {
-  if (!waveCtx || !waveIsPlaying) return;
-  const canvas = document.getElementById('waveCanvas');
-  const W = canvas.width, H = canvas.height;
-  waveCtx.clearRect(0, 0, W, H);
-  const bars = 40;
-  const barW = W / bars;
-  const t = Date.now() / 200;
-  for (let i = 0; i < bars; i++) {
-    const h = H * (0.2 + 0.6 * Math.abs(Math.sin(t + i * 0.4)));
-    const y = (H - h) / 2;
-    const progress = audio.currentTime / (audio.duration || 1);
-    const isPlayed = i / bars < progress;
-    waveCtx.fillStyle = isPlayed ? '#fff' : '#555';
-    waveCtx.fillRect(i * barW + 1, y, barW - 2, h);
-  }
-  waveAnim = requestAnimationFrame(animateWave);
-}
 
 async function startWave() {
   if (waveIsPlaying && waveTracks.length > 0) {
@@ -538,8 +518,6 @@ async function startWave() {
     waveIsPlaying = true;
     updateWaveBtn();
     document.getElementById('wave-status').textContent = `${waveTracks.length} треков · LIBAUD FM`;
-    cancelAnimationFrame(waveAnim);
-    animateWave();
     await playTrack(0, 'wave');
   } catch(e) {
     document.getElementById('wave-status').textContent = 'Ошибка загрузки';
@@ -814,6 +792,8 @@ async function doSearch(query) {
   const list = document.getElementById('track-list');
   const label = document.getElementById('search-label');
   if (label) label.textContent = 'Результаты';
+  const lbl = document.getElementById('search-label');
+  if (lbl) lbl.textContent = 'Результаты';
   list.innerHTML = '<div class="empty"><p>Ищу треки...</p></div>';
   try {
     const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
@@ -1097,6 +1077,11 @@ async function loadDownloadsFromServer() {
   } catch(e) { console.warn('Load downloads error:', e); }
 }
 loadDownloadsFromServer();
+setTimeout(() => {
+  showHistoryInSearch();
+  renderPlaylists();
+  if (history.length > 0) { loadRelated(); loadAiRecs(); }
+}, 300);
 
 // Инициализация главной страницы
 setTimeout(() => {
@@ -1210,6 +1195,21 @@ function switchFavTab(tab, el) {
   document.getElementById('offline-content').style.display = tab === 'offline' ? 'block' : 'none';
   if (tab === 'fav') renderList('fav-list', favorites);
   if (tab === 'offline') renderOffline();
+}
+
+function switchFavSub(sub) {
+  document.getElementById('fav-sub-fav').style.display = sub === 'fav' ? 'block' : 'none';
+  document.getElementById('fav-sub-offline').style.display = sub === 'offline' ? 'block' : 'none';
+  document.getElementById('fav-tab-fav').style.color = sub === 'fav' ? '#000' : '#888';
+  document.getElementById('fav-tab-offline').style.color = sub === 'offline' ? '#000' : '#888';
+  if (sub === 'fav') renderList('fav-list', favorites);
+  if (sub === 'offline') renderOffline();
+}
+
+function showHistoryInSearch() {
+  const label = document.getElementById('search-label');
+  if (label) label.textContent = 'История';
+  renderList('track-list', history.slice(0, 20));
 }
 
 function switchTab(tab, tabEl, navEl) {
