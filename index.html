@@ -250,8 +250,191 @@
   .wave-play-ring { width: 52px; height: 52px; background: rgba(255,255,255,0.15); border: 2px solid rgba(255,255,255,0.4); border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: opacity 0.3s; }
   .wave-gif.playing + .wave-gif-overlay .wave-play-ring { opacity: 0; }
 
-  .toast { position: fixed;  .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #000; color: #fff; padding: 10px 20px; border-radius: 0; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; font-weight: 700; white-space: nowrap; opacity: 0; transition: opacity 0.3s; z-index: 999; pointer-events: none; border: 2px solid #000; }
+  .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #000; color: #fff; padding: 10px 20px; border-radius: 0; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; font-weight: 700; white-space: nowrap; opacity: 0; transition: opacity 0.3s; z-index: 999; pointer-events: none; border: 2px solid #000; }
   .toast.show { opacity: 1; }
+
+  /* ── СТРАНИЦА АРТИСТА ── */
+  .artist-page {
+    position: fixed; inset: 0; z-index: 150;
+    background: var(--bg);
+    transform: translateX(100%);
+    transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .artist-page.open { transform: translateX(0); }
+
+  .artist-header {
+    position: relative; flex-shrink: 0;
+    height: 220px; overflow: hidden;
+    background: #111;
+  }
+  .artist-header-img {
+    width: 100%; height: 100%; object-fit: cover;
+    display: block; filter: brightness(0.55);
+  }
+  .artist-header-gradient {
+    position: absolute; inset: 0;
+    background: linear-gradient(to bottom, transparent 40%, var(--bg) 100%);
+  }
+  .artist-back {
+    position: absolute; top: 16px; left: 16px;
+    width: 36px; height: 36px; background: rgba(0,0,0,0.6);
+    border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    color: #fff; border-radius: 50%;
+  }
+  .artist-header-info {
+    position: absolute; bottom: 16px; left: 20px; right: 20px;
+  }
+  .artist-header-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 36px; letter-spacing: 3px; color: #fff;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    line-height: 1;
+  }
+  .artist-header-meta {
+    font-size: 11px; color: rgba(255,255,255,0.7);
+    letter-spacing: 1px; text-transform: uppercase; margin-top: 4px;
+  }
+
+  .artist-body { flex: 1; overflow-y: auto; scrollbar-width: none; }
+  .artist-body::-webkit-scrollbar { display: none; }
+
+  .artist-section { padding: 16px 20px 4px; }
+  .artist-section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 14px; letter-spacing: 3px; color: #888;
+    text-transform: uppercase; margin-bottom: 12px;
+  }
+
+  .artist-play-btn {
+    display: flex; align-items: center; gap: 10px;
+    background: #000; border: none; cursor: pointer;
+    padding: 12px 20px; color: #fff;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 16px; letter-spacing: 2px;
+    margin: 0 20px 4px; width: calc(100% - 40px);
+    transition: opacity 0.15s;
+  }
+  .artist-play-btn:active { opacity: 0.8; }
+
+  /* ── АЛЬБОМЫ СЕТКА ── */
+  .albums-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .album-card { cursor: pointer; }
+  .album-card:active { opacity: 0.8; }
+  .album-card-cover {
+    width: 100%; aspect-ratio: 1; overflow: hidden;
+    border: 2px solid #000; background: #111; margin-bottom: 8px;
+    position: relative;
+  }
+  .album-card-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .album-card-name {
+    font-size: 13px; font-weight: 700; color: #000;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .album-card-meta { font-size: 11px; color: #888; margin-top: 2px; }
+  .album-type-badge {
+    position: absolute; top: 6px; left: 6px;
+    background: #000; color: #fff;
+    font-size: 9px; letter-spacing: 1px; text-transform: uppercase;
+    padding: 2px 6px; font-weight: 700;
+  }
+
+  /* ── СТРАНИЦА АЛЬБОМА ── */
+  .album-page {
+    position: fixed; inset: 0; z-index: 160;
+    background: var(--bg);
+    transform: translateX(100%);
+    transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .album-page.open { transform: translateX(0); }
+
+  .album-header {
+    display: flex; align-items: flex-end; gap: 16px;
+    padding: 16px 20px 20px; background: #000; flex-shrink: 0;
+  }
+  .album-header-cover {
+    width: 100px; height: 100px; flex-shrink: 0;
+    border: 3px solid #fff; overflow: hidden; background: #333;
+  }
+  .album-header-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .album-header-info { min-width: 0; }
+  .album-header-back {
+    position: absolute; top: 16px; left: 16px;
+    width: 36px; height: 36px; background: rgba(255,255,255,0.15);
+    border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    color: #fff; border-radius: 50%;
+  }
+  .album-header-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px; letter-spacing: 2px; color: #fff;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .album-header-artist {
+    font-size: 12px; color: #aaa;
+    letter-spacing: 1px; text-transform: uppercase; margin-top: 4px; cursor: pointer;
+  }
+  .album-header-meta { font-size: 11px; color: #666; margin-top: 6px; }
+
+  .album-play-row {
+    display: flex; gap: 10px; padding: 12px 20px;
+    flex-shrink: 0; border-bottom: 1px solid #ddd;
+  }
+  .album-play-all {
+    flex: 1; background: #000; border: none; color: #fff; cursor: pointer;
+    padding: 11px 16px; font-family: 'Bebas Neue', sans-serif;
+    font-size: 15px; letter-spacing: 2px; display: flex; align-items: center; gap: 8px;
+    transition: opacity 0.15s;
+  }
+  .album-play-all:active { opacity: 0.8; }
+  .album-shuffle-btn {
+    background: transparent; border: 2px solid #000; color: #000; cursor: pointer;
+    padding: 11px 14px; display: flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+    transition: all 0.15s;
+  }
+  .album-shuffle-btn:active { background: #000; color: #fff; }
+
+  .album-tracks-list { flex: 1; overflow-y: auto; scrollbar-width: none; }
+  .album-tracks-list::-webkit-scrollbar { display: none; }
+  .album-track-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 20px; border-bottom: 1px solid #eee; cursor: pointer;
+    transition: background 0.1s;
+  }
+  .album-track-item:active { background: #000; }
+  .album-track-num {
+    width: 24px; text-align: center; font-size: 13px;
+    color: #999; flex-shrink: 0; font-weight: 600;
+  }
+  .album-track-item.playing .album-track-num { color: #fff; }
+  .album-track-item.playing { background: #000; }
+  .album-track-item.playing .track-name { color: #fff; }
+  .album-track-item.playing .track-meta { color: #aaa; }
+
+  /* ── ВОЛНА — метка слоя ── */
+  .wave-layer-badge {
+    font-size: 9px; letter-spacing: 1px; text-transform: uppercase;
+    padding: 2px 5px; font-weight: 700; flex-shrink: 0;
+  }
+  .wave-layer-badge.album { background: #000; color: #fff; }
+  .wave-layer-badge.discovery { background: #e8e8e0; color: #555; }
+
+  /* ── СЕКЦИЯ АРТИСТА В ВОЛНЕ ── */
+  .wave-album-hint {
+    background: #111; margin: 0 20px 16px;
+    padding: 12px 14px; display: flex; align-items: center; gap: 12px;
+    cursor: pointer; border: none; width: calc(100% - 40px); text-align: left;
+  }
+  .wave-album-hint:active { opacity: 0.8; }
+  .wave-album-hint-cover {
+    width: 44px; height: 44px; flex-shrink: 0;
+    overflow: hidden; border: 2px solid #333;
+  }
+  .wave-album-hint-cover img { width: 100%; height: 100%; object-fit: cover; }
+  .wave-album-hint-text { min-width: 0; }
+  .wave-album-hint-label { font-size: 10px; color: #666; letter-spacing: 1px; text-transform: uppercase; }
+  .wave-album-hint-name { font-size: 13px; font-weight: 700; color: #fff; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 </style>
 </head>
 <body>
@@ -475,6 +658,75 @@
 
 <div class="toast" id="toast"></div>
 
+<!-- СТРАНИЦА АРТИСТА -->
+<div class="artist-page" id="artist-page">
+  <div class="artist-header">
+    <img id="artist-page-img" class="artist-header-img" src="" alt="">
+    <div class="artist-header-gradient"></div>
+    <button class="artist-back" onclick="closeArtistPage()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <div class="artist-header-info">
+      <div class="artist-header-name" id="artist-page-name">—</div>
+      <div class="artist-header-meta" id="artist-page-meta"></div>
+    </div>
+  </div>
+
+  <div class="artist-body" id="artist-body">
+    <button class="artist-play-btn" onclick="playArtistTopTracks()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      Слушать топ треки
+    </button>
+
+    <div class="artist-section">
+      <div class="artist-section-title">Топ треки</div>
+      <div class="track-list" id="artist-top-tracks"></div>
+    </div>
+
+    <div class="artist-section" id="artist-albums-section">
+      <div class="artist-section-title">Альбомы</div>
+      <div class="albums-grid" id="artist-albums-grid"></div>
+    </div>
+
+    <div class="artist-section" id="artist-singles-section" style="padding-bottom:100px;">
+      <div class="artist-section-title">Синглы</div>
+      <div class="h-scroll" id="artist-singles-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- СТРАНИЦА АЛЬБОМА -->
+<div class="album-page" id="album-page">
+  <div style="position:relative;">
+    <div class="album-header" id="album-header">
+      <div class="album-header-cover">
+        <img id="album-page-cover" src="" alt="">
+      </div>
+      <div class="album-header-info">
+        <div class="album-header-title" id="album-page-title">—</div>
+        <div class="album-header-artist" id="album-page-artist" onclick="goBackToArtist()">—</div>
+        <div class="album-header-meta" id="album-page-meta"></div>
+      </div>
+    </div>
+    <button class="album-header-back" onclick="closeAlbumPage()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+  </div>
+
+  <div class="album-play-row">
+    <button class="album-play-all" onclick="playAlbumAll()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      Слушать альбом
+    </button>
+    <button class="album-shuffle-btn" onclick="playAlbumShuffle()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
+      Shuffle
+    </button>
+  </div>
+
+  <div class="album-tracks-list" id="album-tracks-list"></div>
+</div>
+
 <script>
 const RAILWAY_URL = 'https://web-production-4beac.up.railway.app';
 
@@ -591,7 +843,7 @@ function renderHScroll(containerId, items) {
         </div>
       </div>
       <div class="h-card-name">${t.name}</div>
-      <div class="h-card-artist">${t.artist}</div>
+      <div class="h-card-artist" style="${t.artist_id ? 'cursor:pointer;' : ''}" ${t.artist_id ? `onclick="event.stopPropagation();openArtistPage('${t.artist_id}','${escapeAttr(t.artist)}')"` : ''}>${t.artist}</div>
     </div>`;
   }).join('');
   // Сохраняем треки для воспроизведения
@@ -789,25 +1041,7 @@ function showHistoryInSearch() {
 }
 
 async function doSearch(query) {
-  const list = document.getElementById('track-list');
-  const label = document.getElementById('search-label');
-  if (label) label.textContent = 'Результаты';
-  const lbl = document.getElementById('search-label');
-  if (lbl) lbl.textContent = 'Результаты';
-  list.innerHTML = '<div class="empty"><p>Ищу треки...</p></div>';
-  try {
-    const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    if (!data.tracks || !data.tracks.length) {
-      list.innerHTML = '<div class="empty"><p>Ничего не найдено</p></div>';
-      return;
-    }
-    tracks = data.tracks;
-    renderList('track-list', tracks);
-  } catch(e) {
-    list.innerHTML = `<div class="empty"><p>Ошибка: ${e.message}</p></div>`;
-  }
+  return doSearchWithArtists(query);
 }
 
 // ── RENDER ──
@@ -823,7 +1057,7 @@ function renderList(containerId, items) {
     return `
     <div class="track-item ${isNow ? 'playing' : ''}" onclick="playTrack(${i},'${source}')">
       <div class="cover">${coverHtml}<div class="playing-indicator"><div class="bars"><div class="bar"></div><div class="bar"></div><div class="bar"></div></div></div></div>
-      <div class="track-info"><div class="track-name">${t.name}</div><div class="track-meta">${t.artist}${t.album ? ' · ' + t.album : ''}</div></div>
+      <div class="track-info"><div class="track-name">${t.name}</div><div class="track-meta" style="${t.artist_id ? 'cursor:pointer;' : ''}" ${t.artist_id ? `onclick="event.stopPropagation();openArtistPage('${t.artist_id}','${escapeAttr(t.artist)}')"` : ''}>${t.artist}${t.album ? ' · ' + t.album : ''}</div></div>
       <div class="track-actions">
         <div class="track-dur">${t.dur || ''}</div>
         ${downloaded.has(t.id) ? '<div class="dl-badge"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>' : ''}
@@ -878,6 +1112,9 @@ async function playTrack(idx, source = 'all') {
     await audio.play();
     showToast('');
     updateMediaSession(t);
+    // Показываем album hint если трек из Волны и из альбома
+    if (source === 'wave' && t._layer === 'album') updateWaveAlbumHint(t);
+    else { const h = document.getElementById('wave-album-hint'); if (h) h.style.display = 'none'; }
   } catch(e) {
     if (e.name === 'AbortError') return;
     console.error('Play error:', e);
@@ -1083,15 +1320,7 @@ setTimeout(() => {
   if (history.length > 0) { loadRelated(); loadAiRecs(); }
 }, 300);
 
-// Инициализация главной страницы
-setTimeout(() => {
-  initWaveCanvas();
-  renderPlaylists();
-  if (history.length > 0) {
-    loadRelated();
-    loadAiRecs();
-  }
-}, 500);
+function initWaveCanvas() {} // заглушка — гифка уже есть в HTML
 
 function renderOffline() {
   const list = document.getElementById('offline-list');
@@ -1249,7 +1478,319 @@ function showToast(msg) {
   toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
 }
 
-// ── PWA SERVICE WORKER ──
+// ── ARTIST PAGE ──
+let currentArtistData = null;
+let currentArtistTopTracks = [];
+let albumPageHistory = []; // для кнопки "назад" из альбома к артисту
+
+async function openArtistPage(artistId, artistName) {
+  const page = document.getElementById('artist-page');
+  document.getElementById('artist-page-name').textContent = artistName || '...';
+  document.getElementById('artist-page-img').src = '';
+  document.getElementById('artist-page-meta').textContent = '';
+  document.getElementById('artist-top-tracks').innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Загружаю...</div>';
+  document.getElementById('artist-albums-grid').innerHTML = '';
+  document.getElementById('artist-singles-list').innerHTML = '';
+  page.classList.add('open');
+
+  try {
+    const res = await fetch(`/api/search?action=artist&artist_id=${encodeURIComponent(artistId)}`);
+    const data = await res.json();
+    currentArtistData = data;
+    currentArtistTopTracks = data.topTracks || [];
+
+    // Фото
+    const img = document.getElementById('artist-page-img');
+    if (data.artist?.cover) img.src = data.artist.cover;
+
+    // Мета
+    const followers = data.artist?.followers ? formatFollowers(data.artist.followers) + ' слушателей' : '';
+    const genres = data.artist?.genres?.join(', ') || '';
+    document.getElementById('artist-page-meta').textContent = [followers, genres].filter(Boolean).join(' · ');
+
+    // Топ треки
+    renderArtistTopTracks(data.topTracks || []);
+
+    // Альбомы
+    renderArtistAlbums(data.albums || [], 'artist-albums-grid');
+    document.getElementById('artist-albums-section').style.display = (data.albums?.length) ? 'block' : 'none';
+
+    // Синглы — горизонтальный скролл
+    renderArtistSingles(data.singles || []);
+    document.getElementById('artist-singles-section').style.display = (data.singles?.length) ? 'block' : 'none';
+
+  } catch (e) {
+    document.getElementById('artist-top-tracks').innerHTML = '<div style="color:#999;padding:20px">Ошибка загрузки</div>';
+  }
+}
+
+function closeArtistPage() {
+  document.getElementById('artist-page').classList.remove('open');
+  albumPageHistory = [];
+}
+
+function formatFollowers(n) {
+  if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+  if (n >= 1000) return Math.round(n / 1000) + 'K';
+  return n;
+}
+
+function renderArtistTopTracks(topTracks) {
+  const list = document.getElementById('artist-top-tracks');
+  if (!topTracks.length) { list.innerHTML = '<div style="color:#999;font-size:13px;padding:12px 0">Нет треков</div>'; return; }
+  list.innerHTML = topTracks.map((t, i) => {
+    const coverHtml = t.cover ? `<img src="${t.cover}" loading="lazy">` : '<div class="cover-placeholder"></div>';
+    return `
+    <div class="track-item" onclick="playArtistTrack(${i})">
+      <div class="cover">${coverHtml}<div class="playing-indicator"><div class="bars"><div class="bar"></div><div class="bar"></div><div class="bar"></div></div></div></div>
+      <div class="track-info">
+        <div class="track-name">${t.name}</div>
+        <div class="track-meta">${t.album || ''}</div>
+      </div>
+      <div class="track-actions">
+        <div class="track-dur">${t.dur || ''}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function playArtistTrack(idx) {
+  tracks = currentArtistTopTracks;
+  currentSource = 'all';
+  playTrack(idx, 'all');
+}
+
+function playArtistTopTracks() {
+  if (!currentArtistTopTracks.length) return;
+  tracks = currentArtistTopTracks;
+  currentSource = 'all';
+  playTrack(0, 'all');
+  showToast('▶ Топ треки артиста');
+}
+
+function renderArtistAlbums(albums, containerId) {
+  const grid = document.getElementById(containerId);
+  if (!albums.length) { grid.innerHTML = ''; return; }
+  grid.innerHTML = albums.map(a => `
+    <div class="album-card" onclick="openAlbumPage('${a.id}', '${escapeAttr(a.name)}')">
+      <div class="album-card-cover">
+        ${a.cover ? `<img src="${a.cover}" loading="lazy">` : '<div style="width:100%;height:100%;background:#111;"></div>'}
+        <div class="album-type-badge">${a.type === 'single' ? 'Single' : 'Album'}</div>
+      </div>
+      <div class="album-card-name">${a.name}</div>
+      <div class="album-card-meta">${a.year}${a.total_tracks ? ' · ' + a.total_tracks + ' тр.' : ''}</div>
+    </div>`).join('');
+}
+
+function renderArtistSingles(singles) {
+  const container = document.getElementById('artist-singles-list');
+  if (!singles.length) { container.innerHTML = ''; return; }
+  container.innerHTML = singles.map(a => `
+    <div class="h-card" onclick="openAlbumPage('${a.id}', '${escapeAttr(a.name)}')">
+      <div class="h-card-cover">
+        ${a.cover ? `<img src="${a.cover}" loading="lazy" style="width:100%;height:100%;object-fit:cover;">` : '<div style="width:100%;height:100%;background:#111;"></div>'}
+      </div>
+      <div class="h-card-name">${a.name}</div>
+      <div class="h-card-artist">${a.year}</div>
+    </div>`).join('');
+}
+
+function escapeAttr(s) {
+  return (s || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+
+// ── ALBUM PAGE ──
+let currentAlbumTracks = [];
+let currentAlbumArtistId = null;
+
+async function openAlbumPage(albumId, albumName) {
+  const page = document.getElementById('album-page');
+  document.getElementById('album-page-title').textContent = albumName || '...';
+  document.getElementById('album-page-artist').textContent = '...';
+  document.getElementById('album-page-meta').textContent = '';
+  document.getElementById('album-page-cover').src = '';
+  document.getElementById('album-tracks-list').innerHTML = '<div style="color:#999;font-size:13px;padding:20px">Загружаю...</div>';
+  page.classList.add('open');
+
+  try {
+    const res = await fetch(`/api/search?action=album_tracks&album_id=${encodeURIComponent(albumId)}`);
+    const data = await res.json();
+    currentAlbumTracks = data.tracks || [];
+    currentAlbumArtistId = data.album?.artist_id || null;
+
+    const album = data.album;
+    if (album?.cover) document.getElementById('album-page-cover').src = album.cover;
+    document.getElementById('album-page-title').textContent = album?.name || albumName;
+    document.getElementById('album-page-artist').textContent = album?.artist || '';
+    document.getElementById('album-page-meta').textContent = [
+      album?.year,
+      album?.total_tracks ? album.total_tracks + ' треков' : '',
+      album?.label,
+    ].filter(Boolean).join(' · ');
+
+    renderAlbumTracks(currentAlbumTracks);
+  } catch (e) {
+    document.getElementById('album-tracks-list').innerHTML = '<div style="color:#999;padding:20px">Ошибка загрузки</div>';
+  }
+}
+
+function closeAlbumPage() {
+  document.getElementById('album-page').classList.remove('open');
+}
+
+function goBackToArtist() {
+  // Если артист страница открыта — просто закрываем альбом
+  const artistPage = document.getElementById('artist-page');
+  if (artistPage.classList.contains('open')) {
+    closeAlbumPage();
+  } else if (currentAlbumArtistId) {
+    const artistName = document.getElementById('album-page-artist').textContent;
+    closeAlbumPage();
+    openArtistPage(currentAlbumArtistId, artistName);
+  }
+}
+
+function renderAlbumTracks(trackList) {
+  const list = document.getElementById('album-tracks-list');
+  if (!trackList.length) { list.innerHTML = '<div style="color:#999;padding:20px">Треков не найдено</div>'; return; }
+  list.innerHTML = trackList.map((t, i) => `
+    <div class="album-track-item" id="album-track-${i}" onclick="playAlbumTrack(${i})">
+      <div class="album-track-num">${t.track_number || i + 1}</div>
+      <div class="track-info">
+        <div class="track-name">${t.name}</div>
+        <div class="track-meta">${t.dur || ''}</div>
+      </div>
+    </div>`).join('');
+}
+
+function playAlbumTrack(idx) {
+  tracks = currentAlbumTracks;
+  currentSource = 'all';
+  playTrack(idx, 'all');
+  // Подсвечиваем
+  document.querySelectorAll('.album-track-item').forEach((el, i) => el.classList.toggle('playing', i === idx));
+}
+
+function playAlbumAll() {
+  if (!currentAlbumTracks.length) return;
+  tracks = currentAlbumTracks;
+  currentSource = 'all';
+  playTrack(0, 'all');
+  showToast('▶ Слушаю альбом');
+}
+
+function playAlbumShuffle() {
+  if (!currentAlbumTracks.length) return;
+  tracks = [...currentAlbumTracks].sort(() => Math.random() - 0.5);
+  currentSource = 'all';
+  playTrack(0, 'all');
+  showToast('🔀 Shuffle альбом');
+}
+
+// ── Клик на имя артиста в треке → открыть страницу ──
+// ── Артист кликабелен — добавляем обработчики после рендера треков ──
+function addArtistClickHandlers(containerId, items) {
+  const list = document.getElementById(containerId);
+  if (!list) return;
+  list.querySelectorAll('.track-meta').forEach((el, i) => {
+    const t = items[i];
+    if (t?.artist_id) {
+      el.style.cursor = 'pointer';
+      el.onclick = (e) => { e.stopPropagation(); openArtistPage(t.artist_id, t.artist); };
+    }
+  });
+}
+
+// ── WAVE ALBUM HINT — показываем альбом когда играет альбомный трек ──
+function updateWaveAlbumHint(track) {
+  let hint = document.getElementById('wave-album-hint');
+  if (!track || !track.album_id || track._layer !== 'album') {
+    if (hint) hint.style.display = 'none';
+    return;
+  }
+  if (!hint) {
+    hint = document.createElement('button');
+    hint.id = 'wave-album-hint';
+    hint.className = 'wave-album-hint';
+    const waveSection = document.querySelector('.wave-section');
+    if (waveSection) waveSection.parentNode.insertBefore(hint, waveSection.nextSibling);
+  }
+  hint.style.display = 'flex';
+  hint.innerHTML = `
+    <div class="wave-album-hint-cover">
+      ${track.cover ? `<img src="${track.cover}">` : ''}
+    </div>
+    <div class="wave-album-hint-text">
+      <div class="wave-album-hint-label">Из альбома · нажми чтобы открыть</div>
+      <div class="wave-album-hint-name">${track.album || ''}</div>
+    </div>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2" style="margin-left:auto;flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>
+  `;
+  hint.onclick = () => openAlbumPage(track.album_id, track.album);
+}
+
+// ── Поиск — отображаем артистов вверху ──
+async function doSearchWithArtists(query) {
+  const list = document.getElementById('track-list');
+  const label = document.getElementById('search-label');
+  if (label) label.textContent = 'Результаты';
+  list.innerHTML = '<div class="empty"><p>Ищу...</p></div>';
+  try {
+    const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    let html = '';
+
+    // Блок артистов
+    if (data.artists?.length) {
+      html += `<div class="section-label" style="margin-top:8px;margin-bottom:8px;">Исполнители</div>
+        <div class="h-scroll" style="margin-bottom:16px;">
+          ${data.artists.map(a => `
+            <div class="h-card" onclick="openArtistPage('${a.id}','${escapeAttr(a.name)}')">
+              <div class="h-card-cover" style="${a.cover ? '' : 'background:#111;'}">
+                ${a.cover ? `<img src="${a.cover}" loading="lazy" style="width:100%;height:100%;object-fit:cover;">` : ''}
+              </div>
+              <div class="h-card-name">${a.name}</div>
+              <div class="h-card-artist">${a.genres?.[0] || ''}</div>
+            </div>`).join('')}
+        </div>
+        <div class="section-label" style="margin-bottom:8px;">Треки</div>`;
+    }
+
+    if (!data.tracks?.length && !data.artists?.length) {
+      list.innerHTML = '<div class="empty"><p>Ничего не найдено</p></div>';
+      return;
+    }
+
+    tracks = data.tracks || [];
+    html += tracks.map((t, i) => {
+      const isFaved = favorites.some(f => f.id === t.id);
+      const coverHtml = t.cover ? `<img src="${t.cover}" loading="lazy">` : '<div class="cover-placeholder"></div>';
+      const artistClick = t.artist_id ? `onclick="event.stopPropagation();openArtistPage('${t.artist_id}','${escapeAttr(t.artist)}')"` : '';
+      return `
+      <div class="track-item" onclick="playTrack(${i},'all')">
+        <div class="cover">${coverHtml}<div class="playing-indicator"><div class="bars"><div class="bar"></div><div class="bar"></div><div class="bar"></div></div></div></div>
+        <div class="track-info">
+          <div class="track-name">${t.name}</div>
+          <div class="track-meta" style="${t.artist_id ? 'cursor:pointer;' : ''}" ${artistClick}>${t.artist}${t.album ? ' · ' + t.album : ''}</div>
+        </div>
+        <div class="track-actions">
+          <div class="track-dur">${t.dur || ''}</div>
+          <button class="fav-btn ${isFaved ? 'active' : ''}" onclick="event.stopPropagation();toggleFav('${t.id}','all',${i})">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="${isFaved ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          </button>
+        </div>
+      </div>`;
+    }).join('');
+
+    list.innerHTML = html;
+  } catch (e) {
+    list.innerHTML = `<div class="empty"><p>Ошибка: ${e.message}</p></div>`;
+  }
+}
+
+
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').then(reg => {
