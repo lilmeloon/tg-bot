@@ -903,13 +903,25 @@ async function loadAiRecs() {
     container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Слушай музыку чтобы появились рекомендации</div>';
     return;
   }
-  container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Спрашиваю AI...</div>';
+  container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Подбираю...</div>';
   try {
-    const res = await fetch(`/api/search?action=ai_recommend&artists=${encodeURIComponent(historyArtists.join(','))}`);
+    const res = await fetch(`/api/search?action=ai_recommend&artists=${encodeURIComponent(historyArtists.join(','))}&limit=12`);
     const data = await res.json();
-    renderHScroll('ai-recs-list', data.tracks || []);
+    if (data.tracks && data.tracks.length > 0) {
+      renderHScroll('ai-recs-list', data.tracks);
+      return;
+    }
+    throw new Error('empty');
   } catch(e) {
-    container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Ошибка загрузки</div>';
+    // Фолбэк — ищем напрямую по артисту из истории
+    try {
+      const pick = historyArtists[Math.floor(Math.random() * Math.min(3, historyArtists.length))];
+      const res2 = await fetch(`/api/search?q=${encodeURIComponent(pick)}`);
+      const data2 = await res2.json();
+      const fallback = (data2.tracks || []).filter(t => !history.some(h => h.id === t.id));
+      if (fallback.length) { renderHScroll('ai-recs-list', fallback); return; }
+    } catch(_) {}
+    container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Нажми «Обновить»</div>';
   }
 }
 
@@ -924,11 +936,22 @@ async function loadRelated() {
   }
   container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Ищу похожее...</div>';
   try {
-    const res = await fetch(`/api/search?action=related&track=${encodeURIComponent(lastTrack.artist + ' ' + lastTrack.name)}&limit=10`);
+    const res = await fetch(`/api/search?action=related&track=${encodeURIComponent(lastTrack.artist + ' - ' + lastTrack.name)}&limit=12`);
     const data = await res.json();
-    renderHScroll('related-list', data.tracks || []);
+    if (data.tracks && data.tracks.length > 0) {
+      renderHScroll('related-list', data.tracks);
+      return;
+    }
+    throw new Error('empty');
   } catch(e) {
-    container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Ошибка загрузки</div>';
+    // Фолбэк — ищем по артисту напрямую
+    try {
+      const res2 = await fetch(`/api/search?q=${encodeURIComponent(lastTrack.artist)}`);
+      const data2 = await res2.json();
+      const fallback = (data2.tracks || []).filter(t => t.id !== lastTrack.id);
+      if (fallback.length) { renderHScroll('related-list', fallback); return; }
+    } catch(_) {}
+    container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Нажми «Обновить»</div>';
   }
 }
 
