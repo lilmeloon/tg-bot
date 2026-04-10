@@ -299,8 +299,7 @@ album_artists — 2 артиста из списка, чьи альбомы ст
     }
 
     // ── AI РЕКОМЕНДАЦИИ ──
-    if (action === 'ai_recommend') {
-      if (!artists) return res.status(400).json({ error: 'Нет данных' });
+    if (action === 'ai_recommend') {      if (!artists) return res.status(400).json({ error: 'Нет данных' });
       const historyArtists = artists.split(',').slice(0, 10);
 
       const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
@@ -335,6 +334,61 @@ album_artists — 2 артиста из списка, чьи альбомы ст
       }
 
       return res.status(200).json({ tracks: aiTracks });
+    }
+
+    // ── РЕКОМЕНДОВАННЫЕ АЛЬБОМЫ — Claude подбирает альбомы по вкусу ──
+    if (action === 'rec_albums') {
+      if (!artists) return res.status(400).json({ error: 'Нет данных' });
+      const historyArtists = artists.split(',').slice(0, 10);
+
+      const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 400,
+          messages: [{
+            role: 'user',
+            content: `Пользователь слушает: ${historyArtists.join(', ')}.
+Порекомендуй 6 альбомов которые ему точно понравятся — как классику жанра так и свежие релизы.
+Отвечай ТОЛЬКО JSON массивом объектов без объяснений:
+[{"artist":"Artist1","album":"Album1"},{"artist":"Artist2","album":"Album2"},{"artist":"Artist3","album":"Album3"},{"artist":"Artist4","album":"Album4"},{"artist":"Artist5","album":"Album5"},{"artist":"Artist6","album":"Album6"}]`
+          }]
+        })
+      });
+
+      const claudeData = await claudeRes.json();
+      const text = claudeData.content?.[0]?.text || '[]';
+      let suggestions = [];
+      try {
+        const match = text.match(/\[[\s\S]*?\]/);
+        suggestions = JSON.parse(match ? match[0] : '[]');
+      } catch (e) { suggestions = []; }
+
+      const token = await getSpotifyToken();
+      const albums = [];
+
+      for (const s of suggestions.slice(0, 6)) {
+        try {
+          const r = await fetch(
+            `https://api.spotify.com/v1/search?q=album:${encodeURIComponent(s.album)}+artist:${encodeURIComponent(s.artist)}&type=album&limit=1&market=US`,
+            { headers: { 'Authorization': `Bearer ${token}` } }
+          );
+          const d = await r.json();
+          const a = d.albums?.items?.[0];
+          if (a) albums.push({
+            id: a.id,
+            name: a.name,
+            artist: a.artists[0]?.name || s.artist,
+            artist_id: a.artists[0]?.id || '',
+            cover: a.images[0]?.url || null,
+            year: a.release_date?.slice(0, 4) || '',
+            total_tracks: a.total_tracks,
+          });
+        } catch (e) { /* skip */ }
+      }
+
+      return res.status(200).json({ albums });
     }
 
     return res.status(400).json({ error: 'Неизвестный action' });
