@@ -5,8 +5,10 @@ export default async function handler(req, res) {
 
   const { q, action, artists, track, artist_id, album_id, limit = 10 } = req.query;
 
-  // ── SPOTIFY TOKEN ──
+  // ── SPOTIFY TOKEN (кэшируем в рамках запроса) ──
+  let _token = null;
   async function getSpotifyToken() {
+    if (_token) return _token;
     const r = await fetch('https://accounts.spotify.com/api/token', {
       method: 'POST',
       headers: {
@@ -18,20 +20,23 @@ export default async function handler(req, res) {
       body: 'grant_type=client_credentials'
     });
     const d = await r.json();
-    return d.access_token;
+    _token = d.access_token;
+    return _token;
   }
 
-  function mapTrack(t) {
+  function mapTrack(t, albumOverride) {
+    const album = albumOverride || t.album;
     return {
       id: t.id,
       name: t.name,
       artist: t.artists[0].name,
       artist_id: t.artists[0].id,
-      album: t.album?.name || '',
-      album_id: t.album?.id || '',
-      cover: t.album?.images[0]?.url || null,
-      dur: `${Math.floor(t.duration_ms / 60000)}:${String(Math.floor((t.duration_ms % 60000) / 1000)).padStart(2, '0')}`,
-      preview_url: t.preview_url,
+      album: album?.name || '',
+      album_id: album?.id || '',
+      cover: album?.images?.[0]?.url || null,
+      dur: t.duration_ms
+        ? Math.floor(t.duration_ms/60000)+':'+String(Math.floor((t.duration_ms%60000)/1000)).padStart(2,'0')
+        : '0:00',
       track_number: t.track_number || 0,
     };
   }
@@ -43,18 +48,34 @@ export default async function handler(req, res) {
       cover: a.images[0]?.url || null,
       year: a.release_date?.slice(0, 4) || '',
       total_tracks: a.total_tracks,
-      type: a.album_type, // album | single | compilation
+      type: a.album_type,
     };
   }
 
-  async function searchSpotify(query, lim = 5) {
+  async function spFetch(path) {
     const token = await getSpotifyToken();
-    const r = await fetch(
-      `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=${lim}&market=US`,
-      { headers: { 'Authorization': `Bearer ${token}` } }
-    );
-    const d = await r.json();
-    return d.tracks?.items?.map(mapTrack) || [];
+    const r = await fetch('https://api.spotify.com/v1' + path, {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    return r.json();
+  }
+
+  // Топ треки артиста по ID
+  async function getTopTracks(id) {
+    const d = await spFetch('/artists/' + id + '/top-tracks?market=US');
+    return (d.tracks || []).slice(0, 3).map(t => mapTrack(t));
+  }
+
+  // Related artists по ID — 1 запрос, очень быстро
+  async function getRelated(id) {
+    const d = await spFetch('/artists/' + id + '/related-artists');
+    return (d.artists || []).slice(0, 8);
+  }
+
+  // Находим artist ID по имени
+  async function findArtistId(name) {
+    const d = await spFetch('/search?q=' + encodeURIComponent(name) + '&type=artist&limit=1&market=US');
+    return d.artists?.items?.[0]?.id || null;
   }
 
   try {
@@ -62,17 +83,10 @@ export default async function handler(req, res) {
     // ── ПОИСК ──
     if (!action || action === 'search') {
       if (!q) return res.status(400).json({ error: 'Нет запроса' });
-      const token = await getSpotifyToken();
-      // Ищем и треки и артистов сразу
-      const r = await fetch(
-        `https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track,artist&limit=8&market=US`,
-        { headers: { 'Authorization': `Bearer ${token}` } }
-      );
-      const d = await r.json();
-      const tracks = d.tracks?.items?.map(mapTrack) || [];
+      const d = await spFetch('/search?q=' + encodeURIComponent(q) + '&type=track,artist&limit=8&market=US');
+      const tracks = (d.tracks?.items || []).map(t => mapTrack(t));
       const artists = (d.artists?.items || []).slice(0, 3).map(a => ({
-        id: a.id,
-        name: a.name,
+        id: a.id, name: a.name,
         cover: a.images[0]?.url || null,
         genres: a.genres?.slice(0, 2) || [],
         followers: a.followers?.total || 0,
@@ -83,312 +97,205 @@ export default async function handler(req, res) {
     // ── СТРАНИЦА АРТИСТА ──
     if (action === 'artist') {
       if (!artist_id) return res.status(400).json({ error: 'Нет artist_id' });
-      const token = await getSpotifyToken();
-
-      const [artistRes, topTracksRes, albumsRes] = await Promise.all([
-        fetch(`https://api.spotify.com/v1/artists/${artist_id}`, { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch(`https://api.spotify.com/v1/artists/${artist_id}/top-tracks?market=US`, { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch(`https://api.spotify.com/v1/artists/${artist_id}/albums?market=US&limit=20&include_groups=album,single`, { headers: { 'Authorization': `Bearer ${token}` } }),
+      const [artistData, topData, albumsData] = await Promise.all([
+        spFetch('/artists/' + artist_id),
+        spFetch('/artists/' + artist_id + '/top-tracks?market=US'),
+        spFetch('/artists/' + artist_id + '/albums?market=US&limit=20&include_groups=album,single'),
       ]);
-
-      const artistData = await artistRes.json();
-      const topData = await topTracksRes.json();
-      const albumsData = await albumsRes.json();
-
       const artist = {
-        id: artistData.id,
-        name: artistData.name,
+        id: artistData.id, name: artistData.name,
         cover: artistData.images[0]?.url || null,
-        cover_sm: artistData.images[2]?.url || artistData.images[0]?.url || null,
         genres: artistData.genres?.slice(0, 3) || [],
         followers: artistData.followers?.total || 0,
       };
-
-      const topTracks = (topData.tracks || []).slice(0, 10).map(mapTrack);
-
-      // Группируем альбомы: сначала полные альбомы, потом синглы
+      const topTracks = (topData.tracks || []).slice(0, 10).map(t => mapTrack(t));
       const allAlbums = (albumsData.items || []).map(mapAlbum);
-      const albums = allAlbums.filter(a => a.type === 'album');
-      const singles = allAlbums.filter(a => a.type === 'single').slice(0, 6);
-
-      return res.status(200).json({ artist, topTracks, albums, singles });
+      return res.status(200).json({
+        artist, topTracks,
+        albums: allAlbums.filter(a => a.type === 'album'),
+        singles: allAlbums.filter(a => a.type === 'single').slice(0, 6),
+      });
     }
 
     // ── ТРЕКИ АЛЬБОМА ──
     if (action === 'album_tracks') {
       if (!album_id) return res.status(400).json({ error: 'Нет album_id' });
-      const token = await getSpotifyToken();
-
-      const [albumRes, tracksRes] = await Promise.all([
-        fetch(`https://api.spotify.com/v1/albums/${album_id}`, { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch(`https://api.spotify.com/v1/albums/${album_id}/tracks?limit=50`, { headers: { 'Authorization': `Bearer ${token}` } }),
+      const [albumData, tracksData] = await Promise.all([
+        spFetch('/albums/' + album_id),
+        spFetch('/albums/' + album_id + '/tracks?limit=50'),
       ]);
-
-      const albumData = await albumRes.json();
-      const tracksData = await tracksRes.json();
-
       const album = mapAlbum(albumData);
       album.cover = albumData.images[0]?.url || null;
       album.artist = albumData.artists[0]?.name || '';
       album.artist_id = albumData.artists[0]?.id || '';
       album.label = albumData.label || '';
-
       const tracks = (tracksData.items || []).map(t => ({
-        id: t.id,
-        name: t.name,
-        artist: t.artists[0].name,
-        artist_id: t.artists[0].id,
-        album: albumData.name,
-        album_id: album_id,
+        id: t.id, name: t.name,
+        artist: t.artists[0].name, artist_id: t.artists[0].id,
+        album: albumData.name, album_id,
         cover: albumData.images[0]?.url || null,
-        dur: `${Math.floor(t.duration_ms / 60000)}:${String(Math.floor((t.duration_ms % 60000) / 1000)).padStart(2, '0')}`,
+        dur: Math.floor(t.duration_ms/60000)+':'+String(Math.floor((t.duration_ms%60000)/1000)).padStart(2,'0'),
         track_number: t.track_number,
       }));
-
       return res.status(200).json({ album, tracks });
     }
 
-    // ── LIBAUD FM — улучшенная волна с альбомами ──
+    // ── ПОХОЖИЕ ТРЕКИ — Spotify Related Artists, без Claude ──
+    if (action === 'related') {
+      if (!track) return res.status(400).json({ error: 'Нет трека' });
+      const artistName = track.split(' - ')[0].trim();
+      const id = await findArtistId(artistName);
+      if (!id) {
+        const fallback = await spFetch('/search?q=' + encodeURIComponent(track) + '&type=track&limit=10&market=US');
+        return res.status(200).json({ tracks: (fallback.tracks?.items || []).map(t => mapTrack(t)) });
+      }
+      const related = await getRelated(id);
+      const trackGroups = await Promise.all(related.slice(0, 4).map(a => getTopTracks(a.id)));
+      const seen = new Set();
+      const result = trackGroups.flat()
+        .filter(t => { if (seen.has(t.id)) return false; seen.add(t.id); return true; })
+        .slice(0, parseInt(limit));
+      return res.status(200).json({ tracks: result });
+    }
+
+    // ── AI РЕКОМЕНДАЦИИ — Spotify Related Artists, без Claude ──
+    if (action === 'ai_recommend') {
+      if (!artists) return res.status(400).json({ error: 'Нет данных' });
+      const names = artists.split(',').slice(0, 4).map(s => s.trim());
+      // Находим IDs параллельно
+      const ids = (await Promise.all(names.map(findArtistId))).filter(Boolean);
+      if (!ids.length) return res.status(200).json({ tracks: [] });
+      // Related для первых 2 артистов параллельно
+      const relatedGroups = await Promise.all(ids.slice(0, 2).map(id => getRelated(id)));
+      // Собираем уникальных артистов которых нет в оригинале
+      const seen = new Set(ids);
+      const discovery = [];
+      for (const group of relatedGroups) {
+        for (const a of group) {
+          if (!seen.has(a.id) && discovery.length < 6) {
+            seen.add(a.id);
+            discovery.push(a);
+          }
+        }
+      }
+      // Топ треки discovery артистов параллельно
+      const trackGroups = await Promise.all(discovery.slice(0, 6).map(a => getTopTracks(a.id)));
+      const seenT = new Set();
+      const result = trackGroups.flat()
+        .sort(() => Math.random() - 0.5)
+        .filter(t => { if (seenT.has(t.id)) return false; seenT.add(t.id); return true; })
+        .slice(0, parseInt(limit));
+      return res.status(200).json({ tracks: result });
+    }
+
+    // ── РЕКОМЕНДОВАННЫЕ АЛЬБОМЫ — Spotify Related Artists, без Claude ──
+    if (action === 'rec_albums') {
+      if (!artists) return res.status(400).json({ error: 'Нет данных' });
+      const names = artists.split(',').slice(0, 3).map(s => s.trim());
+      const ids = (await Promise.all(names.map(findArtistId))).filter(Boolean);
+      if (!ids.length) return res.status(200).json({ albums: [] });
+      // Related для 2 артистов
+      const relatedGroups = await Promise.all(ids.slice(0, 2).map(id => getRelated(id)));
+      const seen = new Set(ids);
+      const targets = [];
+      for (const group of relatedGroups) {
+        for (const a of group) {
+          if (!seen.has(a.id) && targets.length < 6) {
+            seen.add(a.id);
+            targets.push(a);
+          }
+        }
+      }
+      // Последний альбом каждого артиста параллельно
+      const albumResults = await Promise.all(targets.slice(0, 6).map(async a => {
+        try {
+          const d = await spFetch('/artists/' + a.id + '/albums?market=US&limit=3&include_groups=album');
+          const album = d.items?.[0];
+          if (!album) return null;
+          return {
+            id: album.id, name: album.name,
+            artist: album.artists[0]?.name || a.name,
+            artist_id: a.id,
+            cover: album.images[0]?.url || null,
+            year: album.release_date?.slice(0, 4) || '',
+            total_tracks: album.total_tracks,
+          };
+        } catch { return null; }
+      }));
+      return res.status(200).json({ albums: albumResults.filter(Boolean) });
+    }
+
+    // ── ВОЛНА — Claude на Haiku для имён + Spotify параллельно ──
     if (action === 'wave') {
       if (!artists) return res.status(400).json({ error: 'Нет артистов' });
-      const artistList = artists.split(',').slice(0, 8);
+      const artistList = artists.split(',').slice(0, 6).map(s => s.trim());
 
-      // Claude анализирует вкусы и предлагает похожих артистов
-      const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 500,
-          messages: [{
-            role: 'user',
-            content: `Пользователь слушает: ${artistList.join(', ')}.
-Подбери персональное радио. Ответь ТОЛЬКО JSON объектом без объяснений:
-{
-  "similar": ["Artist1", "Artist2", "Artist3", "Artist4", "Artist5"],
-  "discovery": ["Artist6", "Artist7", "Artist8"],
-  "album_artists": ["Artist9", "Artist10"]
-}
-similar — похожие по стилю артисты.
-discovery — неожиданные, малоизвестные открытия в схожем жанре.
-album_artists — 2 артиста из списка, чьи альбомы стоит послушать целиком.`
-          }]
-        })
-      });
+      let similarNames = [];
+      let discoveryNames = [];
 
-      const claudeData = await claudeRes.json();
-      const text = claudeData.content?.[0]?.text || '{}';
-      let claudeSuggestions = { similar: [], discovery: [], album_artists: [] };
+      // Пробуем Claude Haiku (быстрее) с коротким промптом
       try {
-        const match = text.match(/\{[\s\S]*?\}/);
-        claudeSuggestions = JSON.parse(match ? match[0] : '{}');
-      } catch (e) { }
+        const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'claude-haiku-4-5-20251001',
+            max_tokens: 150,
+            messages: [{
+              role: 'user',
+              content: `Слушает: ${artistList.join(', ')}. JSON только:
+{"s":["A1","A2","A3","A4"],"d":["A5","A6","A7"]}`
+            }]
+          })
+        });
+        const cd = await claudeRes.json();
+        const text = cd.content?.[0]?.text || '{}';
+        const m = text.match(/\{[\s\S]*?\}/);
+        const p = JSON.parse(m ? m[0] : '{}');
+        similarNames = p.s || [];
+        discoveryNames = p.d || [];
+      } catch (e) { /* фолбэк ниже */ }
 
-      const token = await getSpotifyToken();
-      let waveTracks = [];
-
-      // Слой 1: Похожие артисты (40%)
-      for (const artistName of (claudeSuggestions.similar || []).slice(0, 5)) {
-        const found = await searchSpotify(`artist:${artistName}`, 3);
-        waveTracks.push(...found.map(t => ({ ...t, _layer: 'similar' })));
+      // Фолбэк — Spotify related если Claude не ответил
+      if (!similarNames.length) {
+        const firstId = await findArtistId(artistList[0]);
+        if (firstId) {
+          const rel = await getRelated(firstId);
+          similarNames = rel.slice(0, 4).map(a => a.name);
+          discoveryNames = rel.slice(4, 7).map(a => a.name);
+        }
       }
 
-      // Слой 2: Открытия (25%)
-      for (const artistName of (claudeSuggestions.discovery || []).slice(0, 3)) {
-        const found = await searchSpotify(`artist:${artistName}`, 2);
-        waveTracks.push(...found.map(t => ({ ...t, _layer: 'discovery' })));
-      }
+      // Находим все IDs параллельно одним батчем
+      const allNames = [...new Set([...artistList.slice(0,2), ...similarNames, ...discoveryNames])];
+      const allIds = await Promise.all(allNames.map(findArtistId));
+      const nameToId = {};
+      allNames.forEach((n, i) => { if (allIds[i]) nameToId[n] = allIds[i]; });
 
-      // Слой 3: Альбомы целиком (25%) — NEW
-      for (const artistName of (claudeSuggestions.album_artists || artistList).slice(0, 2)) {
-        // Найдём артиста в Spotify
-        const searchRes = await fetch(
-          `https://api.spotify.com/v1/search?q=${encodeURIComponent(artistName)}&type=artist&limit=1`,
-          { headers: { 'Authorization': `Bearer ${token}` } }
-        );
-        const searchData = await searchRes.json();
-        const foundArtist = searchData.artists?.items?.[0];
-        if (!foundArtist) continue;
+      const simIds = similarNames.map(n => nameToId[n]).filter(Boolean).slice(0, 4);
+      const discIds = discoveryNames.map(n => nameToId[n]).filter(Boolean).slice(0, 3);
+      const famIds = artistList.slice(0, 2).map(n => nameToId[n]).filter(Boolean);
 
-        // Берём его топовый альбом
-        const albumsRes = await fetch(
-          `https://api.spotify.com/v1/artists/${foundArtist.id}/albums?market=US&limit=5&include_groups=album`,
-          { headers: { 'Authorization': `Bearer ${token}` } }
-        );
-        const albumsData = await albumsRes.json();
-        const topAlbum = albumsData.items?.[0];
-        if (!topAlbum) continue;
+      // Все топ треки параллельно
+      const [simTracks, discTracks, famTracks] = await Promise.all([
+        Promise.all(simIds.map(id => getTopTracks(id))),
+        Promise.all(discIds.map(id => getTopTracks(id))),
+        Promise.all(famIds.map(id => getTopTracks(id))),
+      ]);
 
-        // Берём первые 5 треков альбома
-        const tracksRes = await fetch(
-          `https://api.spotify.com/v1/albums/${topAlbum.id}/tracks?limit=5`,
-          { headers: { 'Authorization': `Bearer ${token}` } }
-        );
-        const tracksData = await tracksRes.json();
-        const albumTracks = (tracksData.items || []).map(t => ({
-          id: t.id,
-          name: t.name,
-          artist: t.artists[0].name,
-          artist_id: t.artists[0].id,
-          album: topAlbum.name,
-          album_id: topAlbum.id,
-          cover: topAlbum.images[0]?.url || null,
-          dur: `${Math.floor(t.duration_ms / 60000)}:${String(Math.floor((t.duration_ms % 60000) / 1000)).padStart(2, '0')}`,
-          _layer: 'album',
-          _album_name: topAlbum.name,
-        }));
-        waveTracks.push(...albumTracks);
-      }
+      let waveTracks = [
+        ...simTracks.flat().map(t => ({ ...t, _layer: 'similar' })),
+        ...discTracks.flat().map(t => ({ ...t, _layer: 'discovery' })),
+        ...famTracks.flat().map(t => ({ ...t, _layer: 'familiar' })),
+      ];
 
-      // Слой 4: Сами артисты из истории (10%)
-      for (const artistName of artistList.slice(0, 2)) {
-        const found = await searchSpotify(`artist:${artistName}`, 2);
-        waveTracks.push(...found.map(t => ({ ...t, _layer: 'familiar' })));
-      }
-
-      // Убираем дубли и перемешиваем
       const seen = new Set();
       waveTracks = waveTracks
         .filter(t => { if (seen.has(t.id)) return false; seen.add(t.id); return true; })
         .sort(() => Math.random() - 0.5)
-        .slice(0, parseInt(limit));
+        .slice(0, parseInt(limit) || 20);
 
       return res.status(200).json({ tracks: waveTracks });
-    }
-
-    // ── ПОХОЖИЕ ТРЕКИ ──
-    if (action === 'related') {
-      if (!track) return res.status(400).json({ error: 'Нет трека' });
-
-      const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 300,
-          messages: [{
-            role: 'user',
-            content: `Пользователь слушает трек: "${track}".
-Порекомендуй 5 похожих артистов или треков в том же стиле.
-Отвечай ТОЛЬКО JSON массивом строк вида "Артист - Трек" без объяснений:
-["Artist1 - Track1", "Artist2 - Track2", "Artist3 - Track3", "Artist4 - Track4", "Artist5 - Track5"]`
-          }]
-        })
-      });
-
-      const claudeData = await claudeRes.json();
-      const text = claudeData.content?.[0]?.text || '[]';
-      let suggestions = [];
-      try {
-        const match = text.match(/\[[\s\S]*?\]/);
-        suggestions = JSON.parse(match ? match[0] : '[]');
-      } catch (e) { suggestions = []; }
-
-      let related = [];
-      for (const suggestion of suggestions.slice(0, 5)) {
-        const found = await searchSpotify(suggestion, 2);
-        related.push(...found);
-      }
-
-      const seen = new Set();
-      related = related
-        .filter(t => { if (seen.has(t.id)) return false; seen.add(t.id); return true; })
-        .slice(0, parseInt(limit));
-
-      return res.status(200).json({ tracks: related });
-    }
-
-    // ── AI РЕКОМЕНДАЦИИ ──
-    if (action === 'ai_recommend') {      if (!artists) return res.status(400).json({ error: 'Нет данных' });
-      const historyArtists = artists.split(',').slice(0, 10);
-
-      const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 400,
-          messages: [{
-            role: 'user',
-            content: `Пользователь слушает: ${historyArtists.join(', ')}.
-Порекомендуй 6 неожиданных открытий — артистов которых он скорее всего не знает, но которые ему понравятся.
-Выходи за рамки очевидного, удивляй.
-Отвечай ТОЛЬКО JSON массивом имён артистов без объяснений:
-["Artist1", "Artist2", "Artist3", "Artist4", "Artist5", "Artist6"]`
-          }]
-        })
-      });
-
-      const claudeData = await claudeRes.json();
-      const text = claudeData.content?.[0]?.text || '[]';
-      let recommendedArtists = [];
-      try {
-        const match = text.match(/\[[\s\S]*?\]/);
-        recommendedArtists = JSON.parse(match ? match[0] : '[]');
-      } catch (e) { recommendedArtists = []; }
-
-      let aiTracks = [];
-      for (const artistName of recommendedArtists.slice(0, 6)) {
-        const found = await searchSpotify(artistName, 2);
-        aiTracks.push(...found);
-      }
-
-      return res.status(200).json({ tracks: aiTracks });
-    }
-
-    // ── РЕКОМЕНДОВАННЫЕ АЛЬБОМЫ — Claude подбирает альбомы по вкусу ──
-    if (action === 'rec_albums') {
-      if (!artists) return res.status(400).json({ error: 'Нет данных' });
-      const historyArtists = artists.split(',').slice(0, 10);
-
-      const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 400,
-          messages: [{
-            role: 'user',
-            content: `Пользователь слушает: ${historyArtists.join(', ')}.
-Порекомендуй 6 альбомов которые ему точно понравятся — как классику жанра так и свежие релизы.
-Отвечай ТОЛЬКО JSON массивом объектов без объяснений:
-[{"artist":"Artist1","album":"Album1"},{"artist":"Artist2","album":"Album2"},{"artist":"Artist3","album":"Album3"},{"artist":"Artist4","album":"Album4"},{"artist":"Artist5","album":"Album5"},{"artist":"Artist6","album":"Album6"}]`
-          }]
-        })
-      });
-
-      const claudeData = await claudeRes.json();
-      const text = claudeData.content?.[0]?.text || '[]';
-      let suggestions = [];
-      try {
-        const match = text.match(/\[[\s\S]*?\]/);
-        suggestions = JSON.parse(match ? match[0] : '[]');
-      } catch (e) { suggestions = []; }
-
-      const token = await getSpotifyToken();
-      const albums = [];
-
-      for (const s of suggestions.slice(0, 6)) {
-        try {
-          const r = await fetch(
-            `https://api.spotify.com/v1/search?q=album:${encodeURIComponent(s.album)}+artist:${encodeURIComponent(s.artist)}&type=album&limit=1&market=US`,
-            { headers: { 'Authorization': `Bearer ${token}` } }
-          );
-          const d = await r.json();
-          const a = d.albums?.items?.[0];
-          if (a) albums.push({
-            id: a.id,
-            name: a.name,
-            artist: a.artists[0]?.name || s.artist,
-            artist_id: a.artists[0]?.id || '',
-            cover: a.images[0]?.url || null,
-            year: a.release_date?.slice(0, 4) || '',
-            total_tracks: a.total_tracks,
-          });
-        } catch (e) { /* skip */ }
-      }
-
-      return res.status(200).json({ albums });
     }
 
     return res.status(400).json({ error: 'Неизвестный action' });
