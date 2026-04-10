@@ -164,10 +164,10 @@ export default async function handler(req, res) {
       const names = artists.split(',').slice(0, 4).map(s => s.trim());
       // Находим IDs параллельно
       const ids = (await Promise.all(names.map(findArtistId))).filter(Boolean);
-      if (!ids.length) return res.status(200).json({ tracks: [] });
-      // Related для первых 2 артистов параллельно
+      console.log('[ai] ids:', ids);
+      if (!ids.length) return res.status(200).json({ tracks: [], _debug: 'no ids' });
       const relatedGroups = await Promise.all(ids.slice(0, 2).map(id => getRelated(id)));
-      // Собираем уникальных артистов которых нет в оригинале
+      console.log('[ai] related:', relatedGroups.map(g => g.length));
       const seen = new Set(ids);
       const discovery = [];
       for (const group of relatedGroups) {
