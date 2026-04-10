@@ -242,8 +242,23 @@
   .fav-tab { flex: 1; padding: 10px; font-family: "Bebas Neue", sans-serif; font-size: 14px; letter-spacing: 2px; text-transform: uppercase; background: none; border: none; cursor: pointer; color: #888; transition: all 0.15s; }
   .fav-tab.active { color: #000; border-bottom: 3px solid #000; margin-bottom: -2px; }
 
-  /* ── ВОЛНА С ГИФКОЙ ── */
-  .wave-gif-wrap { display: flex; align-items: center; justify-content: center; position: relative; height: 140px; margin: 0 auto; }
+  /* ── СБОРНИКИ (редакторские плейлисты) ── */
+  .mix-card { width: 150px; flex-shrink: 0; cursor: pointer; position: relative; }
+  .mix-card:active { opacity: 0.8; }
+  .mix-cover { width: 150px; height: 150px; overflow: hidden; border: 2px solid #000; background: #111; margin-bottom: 8px; position: relative; display: flex; align-items: center; justify-content: center; }
+  .mix-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .mix-cover-grad { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; padding: 10px; background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 60%); }
+  .mix-cover-title { font-family: 'Bebas Neue', sans-serif; font-size: 16px; letter-spacing: 1px; color: #fff; line-height: 1.1; }
+  .mix-cover-sub { font-size: 10px; color: rgba(255,255,255,0.6); letter-spacing: 1px; text-transform: uppercase; margin-top: 2px; }
+  .mix-tag { font-size: 11px; color: #888; margin-top: 2px; }
+
+  /* ── РЕКОМЕНДОВАННЫЕ АЛЬБОМЫ ── */
+  .rec-album-card { width: 130px; flex-shrink: 0; cursor: pointer; }
+  .rec-album-card:active { opacity: 0.8; }
+  .rec-album-cover { width: 130px; height: 130px; overflow: hidden; border: 2px solid #000; background: #111; margin-bottom: 6px; }
+  .rec-album-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .rec-album-name { font-size: 12px; font-weight: 700; color: #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rec-album-artist { font-size: 11px; color: #888; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .wave-gif { width: 140px; height: 140px; object-fit: contain; transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s; transform: scale(0.5); opacity: 0.6; cursor: pointer; }
   .wave-gif.playing { transform: scale(1); opacity: 1; }
   .wave-gif-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
@@ -421,20 +436,7 @@
   .wave-layer-badge.discovery { background: #e8e8e0; color: #555; }
 
   /* ── СЕКЦИЯ АРТИСТА В ВОЛНЕ ── */
-  .wave-album-hint {
-    background: #111; margin: 0 20px 16px;
-    padding: 12px 14px; display: flex; align-items: center; gap: 12px;
-    cursor: pointer; border: none; width: calc(100% - 40px); text-align: left;
-  }
-  .wave-album-hint:active { opacity: 0.8; }
-  .wave-album-hint-cover {
-    width: 44px; height: 44px; flex-shrink: 0;
-    overflow: hidden; border: 2px solid #333;
-  }
-  .wave-album-hint-cover img { width: 100%; height: 100%; object-fit: cover; }
-  .wave-album-hint-text { min-width: 0; }
-  .wave-album-hint-label { font-size: 10px; color: #666; letter-spacing: 1px; text-transform: uppercase; }
-  .wave-album-hint-name { font-size: 13px; font-weight: 700; color: #fff; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
 </style>
 </head>
 <body>
@@ -468,9 +470,18 @@
         <div class="wave-status" id="wave-status">На основе твоих вкусов</div>
       </div>
 
+      <!-- СБОРНИКИ -->
+      <div class="home-section" id="mixes-section">
+        <div class="home-section-header">
+          <div class="home-section-title">Сборники</div>
+        </div>
+        <div class="h-scroll" id="mixes-list"></div>
+      </div>
+
+      <!-- AI РЕКОМЕНДАЦИИ -->
       <div class="home-section">
         <div class="home-section-header">
-          <div class="home-section-title">AI Рекомендации</div>
+          <div class="home-section-title">Открытия</div>
           <button class="home-section-more" onclick="loadAiRecs()">Обновить</button>
         </div>
         <div class="h-scroll" id="ai-recs-list">
@@ -478,6 +489,18 @@
         </div>
       </div>
 
+      <!-- РЕКОМЕНДОВАННЫЕ АЛЬБОМЫ -->
+      <div class="home-section" id="rec-albums-section">
+        <div class="home-section-header">
+          <div class="home-section-title">Альбомы для тебя</div>
+          <button class="home-section-more" onclick="loadRecAlbums()">Обновить</button>
+        </div>
+        <div class="h-scroll" id="rec-albums-list">
+          <div style="color:#999;font-size:13px;padding:20px 0">Загружаю...</div>
+        </div>
+      </div>
+
+      <!-- ПОХОЖИЕ ТРЕКИ -->
       <div class="home-section">
         <div class="home-section-header">
           <div class="home-section-title">Похожие треки</div>
@@ -488,7 +511,8 @@
         </div>
       </div>
 
-      <div class="home-section" style="padding-bottom:20px;">
+      <!-- ПЛЕЙЛИСТЫ -->
+      <div class="home-section" style="padding-bottom:24px;">
         <div class="home-section-header">
           <div class="home-section-title">Плейлисты</div>
         </div>
@@ -786,6 +810,91 @@ function updateWaveBtn() {
 }
 
 // ── AI РЕКОМЕНДАЦИИ ──
+// ── СБОРНИКИ — статические редакторские плейлисты ──
+const MIXES = [
+  { id: 'mix_hiphop_ru',   title: 'Русский рэп',      sub: 'Лучшее',      color: '#1a1a1a', query: 'русский рэп хиты', emoji: '🎤' },
+  { id: 'mix_chill',       title: 'Chill вечер',      sub: 'Расслабься',  color: '#0d1f2d', query: 'chill lo-fi beats', emoji: '🌙' },
+  { id: 'mix_hype',        title: 'Энергия',          sub: 'Заряжайся',   color: '#1a0a00', query: 'trap hype bangers 2024', emoji: '⚡' },
+  { id: 'mix_rnb',         title: 'R&B Vibes',        sub: 'Smooth',      color: '#1a0d1a', query: 'rnb soul smooth 2024', emoji: '✨' },
+  { id: 'mix_indie',       title: 'Инди',             sub: 'Открытия',    color: '#0a1a0a', query: 'indie альтернатива хиты', emoji: '🎸' },
+  { id: 'mix_workout',     title: 'Тренировка',       sub: 'Не останавливайся', color: '#1a0a0a', query: 'workout gym motivation', emoji: '🏋️' },
+];
+
+let mixTracks = {}; // кэш треков по id сборника
+
+function renderMixes() {
+  const container = document.getElementById('mixes-list');
+  if (!container) return;
+  container.innerHTML = MIXES.map(m => `
+    <div class="mix-card" onclick="playMix('${m.id}')">
+      <div class="mix-cover" style="background:${m.color};">
+        <div class="mix-cover-grad">
+          <div style="font-size:28px;margin-bottom:4px;">${m.emoji}</div>
+          <div class="mix-cover-title">${m.title}</div>
+          <div class="mix-cover-sub">${m.sub}</div>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+async function playMix(mixId) {
+  const mix = MIXES.find(m => m.id === mixId);
+  if (!mix) return;
+  showToast('⏳ Загружаю сборник...');
+  if (mixTracks[mixId]) {
+    tracks = mixTracks[mixId];
+    currentSource = 'all';
+    playTrack(0, 'all');
+    showToast(`▶ ${mix.title}`);
+    return;
+  }
+  try {
+    const res = await fetch(`/api/search?q=${encodeURIComponent(mix.query)}&action=search`);
+    const data = await res.json();
+    const t = data.tracks || [];
+    if (!t.length) { showToast('Ничего не найдено'); return; }
+    mixTracks[mixId] = t.sort(() => Math.random() - 0.5);
+    tracks = mixTracks[mixId];
+    currentSource = 'all';
+    playTrack(0, 'all');
+    showToast(`▶ ${mix.title}`);
+  } catch(e) {
+    showToast('Ошибка загрузки');
+  }
+}
+
+// ── РЕКОМЕНДОВАННЫЕ АЛЬБОМЫ ──
+async function loadRecAlbums() {
+  const container = document.getElementById('rec-albums-list');
+  if (!container) return;
+  const historyArtists = [...new Set(history.slice(0, 15).map(t => t.artist))];
+  if (!historyArtists.length) {
+    container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Слушай музыку чтобы появились рекомендации</div>';
+    return;
+  }
+  container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Подбираю альбомы...</div>';
+  try {
+    // Просим Claude подобрать альбомы
+    const res = await fetch('/api/search?action=rec_albums&artists=' + encodeURIComponent(historyArtists.slice(0,8).join(',')));
+    const data = await res.json();
+    const albums = data.albums || [];
+    if (!albums.length) {
+      container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Ничего не найдено</div>';
+      return;
+    }
+    container.innerHTML = albums.map(a => `
+      <div class="rec-album-card" onclick="openAlbumPage('${a.id}','${escapeAttr(a.name)}')">
+        <div class="rec-album-cover">
+          ${a.cover ? `<img src="${a.cover}" loading="lazy">` : '<div style="width:100%;height:100%;background:#111;"></div>'}
+        </div>
+        <div class="rec-album-name">${a.name}</div>
+        <div class="rec-album-artist">${a.artist || ''} · ${a.year || ''}</div>
+      </div>`).join('');
+  } catch(e) {
+    container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Ошибка загрузки</div>';
+  }
+}
+
 async function loadAiRecs() {
   const container = document.getElementById('ai-recs-list');
   if (!container) return;
@@ -924,14 +1033,16 @@ function fmt(sec) {
 }
 
 audio.addEventListener('timeupdate', () => {
-  if (!audio.duration) return;
-  const pct = (audio.currentTime / audio.duration) * 100;
+  const dur = audio.duration;
+  const isLive = !dur || !isFinite(dur);
+  const pct = isLive ? 0 : (audio.currentTime / dur) * 100;
   document.getElementById('progress-fill').style.width = pct + '%';
   document.getElementById('fs-bar-fill').style.width = pct + '%';
-  const cur = fmt(audio.currentTime), dur = fmt(audio.duration);
-  document.getElementById('time-label').textContent = `${cur} / ${dur}`;
+  const cur = fmt(audio.currentTime);
+  const durStr = isLive ? '∞' : fmt(dur);
+  document.getElementById('time-label').textContent = isLive ? cur : `${cur} / ${durStr}`;
   document.getElementById('fs-cur').textContent = cur;
-  document.getElementById('fs-dur').textContent = dur;
+  document.getElementById('fs-dur').textContent = durStr;
   // Предзагрузка следующего трека когда осталось 20 сек
   if (audio.duration - audio.currentTime < 20) preloadNext();
 });
@@ -1113,8 +1224,7 @@ async function playTrack(idx, source = 'all') {
     showToast('');
     updateMediaSession(t);
     // Показываем album hint если трек из Волны и из альбома
-    if (source === 'wave' && t._layer === 'album') updateWaveAlbumHint(t);
-    else { const h = document.getElementById('wave-album-hint'); if (h) h.style.display = 'none'; }
+
   } catch(e) {
     if (e.name === 'AbortError') return;
     console.error('Play error:', e);
@@ -1317,7 +1427,8 @@ loadDownloadsFromServer();
 setTimeout(() => {
   showHistoryInSearch();
   renderPlaylists();
-  if (history.length > 0) { loadRelated(); loadAiRecs(); }
+  renderMixes();
+  if (history.length > 0) { loadRelated(); loadAiRecs(); loadRecAlbums(); }
 }, 300);
 
 function initWaveCanvas() {} // заглушка — гифка уже есть в HTML
@@ -1455,8 +1566,10 @@ function switchTab(tab, tabEl, navEl) {
   }
   if (tab === 'home') {
     renderPlaylists();
+    renderMixes();
     loadRelated();
     loadAiRecs();
+    loadRecAlbums();
   }
 }
 
@@ -1699,34 +1812,6 @@ function addArtistClickHandlers(containerId, items) {
       el.onclick = (e) => { e.stopPropagation(); openArtistPage(t.artist_id, t.artist); };
     }
   });
-}
-
-// ── WAVE ALBUM HINT — показываем альбом когда играет альбомный трек ──
-function updateWaveAlbumHint(track) {
-  let hint = document.getElementById('wave-album-hint');
-  if (!track || !track.album_id || track._layer !== 'album') {
-    if (hint) hint.style.display = 'none';
-    return;
-  }
-  if (!hint) {
-    hint = document.createElement('button');
-    hint.id = 'wave-album-hint';
-    hint.className = 'wave-album-hint';
-    const waveSection = document.querySelector('.wave-section');
-    if (waveSection) waveSection.parentNode.insertBefore(hint, waveSection.nextSibling);
-  }
-  hint.style.display = 'flex';
-  hint.innerHTML = `
-    <div class="wave-album-hint-cover">
-      ${track.cover ? `<img src="${track.cover}">` : ''}
-    </div>
-    <div class="wave-album-hint-text">
-      <div class="wave-album-hint-label">Из альбома · нажми чтобы открыть</div>
-      <div class="wave-album-hint-name">${track.album || ''}</div>
-    </div>
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2" style="margin-left:auto;flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>
-  `;
-  hint.onclick = () => openAlbumPage(track.album_id, track.album);
 }
 
 // ── Поиск — отображаем артистов вверху ──
