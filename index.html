@@ -11,24 +11,7 @@
 <meta name="apple-mobile-web-app-title" content="Libaud">
 <link rel="manifest" href="/manifest.json">
 <link rel="apple-touch-icon" href="/icon-192.png">
-<script src="https://telegram.org/js/telegram-web-app.js">
-// ── СБРОС ДАННЫХ ──
-function openResetModal() {
-  document.getElementById('reset-modal').classList.add('open');
-}
-function closeResetModal(e) {
-  if (e && e.target !== document.getElementById('reset-modal')) return;
-  document.getElementById('reset-modal').classList.remove('open');
-}
-function resetAllData() {
-  localStorage.clear();
-  // Останавливаем аудио
-  if (window.audio) { audio.pause(); audio.src = ''; }
-  showToast('Данные сброшены');
-  setTimeout(() => location.reload(), 800);
-}
-
-</script>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Anton&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -369,36 +352,13 @@ function resetAllData() {
   .ob-btn.active { opacity: 1; }
   .ob-btn:active { opacity: 0.85; }
   .ob-selected-count { font-size: 12px; color: #555; text-align: center; margin-top: 8px; font-weight: 600; }
-
-  /* ── МОДАЛКА СБРОСА ── */
-  .reset-modal {
-    position: fixed; inset: 0; z-index: 600;
-    background: rgba(0,0,0,0.7); backdrop-filter: blur(8px);
-    display: flex; align-items: flex-end; justify-content: center;
-    opacity: 0; pointer-events: none; transition: opacity 0.25s;
-  }
-  .reset-modal.open { opacity: 1; pointer-events: all; }
-  .reset-sheet {
-    width: 100%; background: #1a1a1a; border-radius: 20px 20px 0 0;
-    padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
-    transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.32,0.72,0,1);
-    border-top: 1px solid #2a2a2a;
-  }
-  .reset-modal.open .reset-sheet { transform: translateY(0); }
-  .reset-handle { width: 36px; height: 4px; background: #333; border-radius: 2px; margin: 0 auto 20px; }
-  .reset-title { font-size: 17px; font-weight: 700; color: #fff; margin-bottom: 4px; }
-  .reset-sub { font-size: 13px; color: #555; margin-bottom: 20px; }
-  .reset-btn { width: 100%; padding: 14px; border-radius: 14px; font-size: 15px; font-weight: 700; cursor: pointer; border: none; margin-bottom: 10px; transition: opacity 0.15s; }
-  .reset-btn:active { opacity: 0.8; }
-  .reset-btn-danger { background: #ff3b30; color: #fff; }
-  .reset-btn-cancel { background: #2a2a2a; color: #fff; }
 </style>
 </head>
 <body>
 <div id="app">
   <div class="header">
     <div class="header-title">LIBAUD</div>
-    <div class="avatar" id="avatar" onclick="openResetModal()" style="cursor:pointer;">
+    <div class="avatar" id="avatar">
       <img id="avatar-img" src="" style="display:none">
       <span id="avatar-letter">?</span>
     </div>
@@ -762,7 +722,11 @@ async function startWave() {
     return;
   }
   try {
-    const res = await fetch(`/api/search?action=wave&artists=${encodeURIComponent(seedArtists.join(','))}&limit=20&blocked=${encodeURIComponent([...blockedArtists].join(','))}`);
+    const seedIds3 = getSeedIds();
+    const waveParams = seedIds3.length
+      ? `artist_ids=${encodeURIComponent(seedIds3.join(','))}`
+      : `artists=${encodeURIComponent(seedArtists.join(','))}`;
+    const res = await fetch(`/api/search?action=wave&${waveParams}&limit=20`);
     const data = await res.json();
     if (!data.tracks?.length) { document.getElementById('wave-status').textContent = 'Не удалось загрузить'; return; }
     waveTracks = data.tracks;
@@ -1034,7 +998,11 @@ async function loadRecAlbums(force = false) {
   container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Подбираю альбомы...</div>';
   try {
     // Просим Claude подобрать альбомы
-    const res = await fetch('/api/search?action=rec_albums&artists=' + encodeURIComponent(historyArtists.slice(0,8).join(',')));
+    const seedIds2 = getSeedIds();
+    const albumParams = seedIds2.length
+      ? 'artist_ids=' + encodeURIComponent(seedIds2.join(','))
+      : 'artists=' + encodeURIComponent(historyArtists.slice(0,8).join(','));
+    const res = await fetch('/api/search?action=rec_albums&' + albumParams);
     const data = await res.json();
     const albums = data.albums || [];
     if (!albums.length) {
@@ -1054,6 +1022,30 @@ async function loadRecAlbums(force = false) {
   }
 }
 
+
+// Получаем точные Spotify IDs сохранённых артистов
+function getObArtistIds() {
+  try { return JSON.parse(localStorage.getItem('ob_artist_ids') || '{}'); } catch { return {}; }
+}
+
+// Собираем IDs из истории прослушиваний (artist_id поле)
+function getHistoryArtistIds() {
+  const ids = [...new Set(
+    history.filter(t => t.artist_id && !t.id?.startsWith('seed_'))
+           .map(t => t.artist_id)
+  )].slice(0, 6);
+  return ids;
+}
+
+// Главная функция — возвращает лучший набор IDs для рекомендаций
+function getSeedIds() {
+  const histIds = getHistoryArtistIds();
+  const obIds = Object.values(getObArtistIds());
+  const favIds = [...new Set(favorites.map(t => t.artist_id).filter(Boolean))].slice(0, 3);
+  // Приоритет: избранное > история > онбординг
+  return [...new Set([...favIds, ...histIds, ...obIds])].slice(0, 6);
+}
+
 async function loadAiRecs(force = false) {
   const container = document.getElementById('ai-recs-list');
   if (!container) return;
@@ -1069,7 +1061,11 @@ async function loadAiRecs(force = false) {
   }
   container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Подбираю...</div>';
   try {
-    const res = await fetch(`/api/search?action=ai_recommend&artists=${encodeURIComponent(historyArtists.join(','))}&limit=12`);
+    const seedIds = getSeedIds();
+    const params = seedIds.length
+      ? `artist_ids=${encodeURIComponent(seedIds.join(','))}`
+      : `artists=${encodeURIComponent(historyArtists.join(','))}`;
+    const res = await fetch(`/api/search?action=ai_recommend&${params}&limit=12`);
     const data = await res.json();
     if (data.tracks && data.tracks.length > 0) {
       setCachedRecs('ai', data.tracks);
@@ -1791,22 +1787,21 @@ function addObArtistFromSearch(id, name, cover) {
 async function finishOnboarding() {
   if (obSelectedArtists.size < 3) return;
   const selected = [...obSelectedArtists];
-  // Сохраняем в localStorage
+  // Сохраняем имена И Spotify ID артистов
   localStorage.setItem('ob_done', '1');
   localStorage.setItem('ob_artists', JSON.stringify(selected));
-  // Добавляем в historySeed для алгоритмов
-  const seedTracks = selected.map(name => ({
-    id: 'seed_' + name, name: '...', artist: name,
-    artist_id: obArtistData[name]?.id || '',
-    cover: obArtistData[name]?.cover || null, album: '', dur: '0:00'
-  }));
-  history = [...seedTracks, ...history];
-  localStorage.setItem('history', JSON.stringify(history.slice(0, 50)));
+  // Сохраняем точные Spotify ID — это ключевое для рекомендаций
+  const obIds = {};
+  selected.forEach(name => {
+    if (obArtistData[name]?.id) obIds[name] = obArtistData[name].id;
+  });
+  localStorage.setItem('ob_artist_ids', JSON.stringify(obIds));
   // Скрываем онбординг
   document.getElementById('onboarding').classList.add('hidden');
-  // Запускаем рекомендации
   showToast('🎵 Подбираю музыку для тебя...');
-  setTimeout(() => { loadRelated(); loadAiRecs(); loadRecAlbums(); }, 300);
+  // Сбрасываем дневной кэш чтобы загрузить свежие рекомендации
+  ['ai','related','albums'].forEach(k => localStorage.removeItem('recs_cache_' + k));
+  setTimeout(() => { loadRelated(true); loadAiRecs(true); loadRecAlbums(true); }, 300);
 }
 
 // ════════════════════════════════════════════
@@ -2297,34 +2292,6 @@ if ('serviceWorker' in navigator) {
     });
   });
 }
-
-// ── СБРОС ДАННЫХ ──
-function openResetModal() {
-  document.getElementById('reset-modal').classList.add('open');
-}
-function closeResetModal(e) {
-  if (e && e.target !== document.getElementById('reset-modal')) return;
-  document.getElementById('reset-modal').classList.remove('open');
-}
-function resetAllData() {
-  localStorage.clear();
-  // Останавливаем аудио
-  if (window.audio) { audio.pause(); audio.src = ''; }
-  showToast('Данные сброшены');
-  setTimeout(() => location.reload(), 800);
-}
-
 </script>
-
-<!-- МОДАЛКА СБРОСА -->
-<div class="reset-modal" id="reset-modal" onclick="closeResetModal(event)">
-  <div class="reset-sheet">
-    <div class="reset-handle"></div>
-    <div class="reset-title">Сбросить данные</div>
-    <div class="reset-sub">История, избранное, рекомендации и онбординг будут удалены</div>
-    <button class="reset-btn reset-btn-danger" onclick="resetAllData()">Сбросить всё</button>
-    <button class="reset-btn reset-btn-cancel" onclick="closeResetModal()">Отмена</button>
-  </div>
-</div>
 </body>
 </html>
