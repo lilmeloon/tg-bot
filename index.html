@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Libaud</title>
 <meta name="description" content="Libaud — музыкальный плеер">
 <meta name="theme-color" content="#000000">
@@ -23,7 +23,7 @@
     --border: 1px solid #2a2a2a;
   }
   html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'Space Grotesk', sans-serif; font-size: 14px; -webkit-font-smoothing: antialiased; }
-  #app { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  #app { height: 100%; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
 
   .header { padding: 14px 20px 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; position: relative; background: var(--bg); border-bottom: var(--border); }
   .header-title { font-family: 'Bebas Neue', sans-serif; font-size: 28px; font-weight: 400; letter-spacing: 6px; color: #fff; text-align: center; text-transform: uppercase; }
@@ -63,17 +63,15 @@
   .home-name { font-family: "Bebas Neue", sans-serif; font-size: 26px; letter-spacing: 2px; color: #fff; }
 
   /* ── ВОЛНА ── */
-  .wave-section { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); cursor: pointer; position: relative; text-align: center; padding: 20px 20px 24px; margin: 0 16px 8px; border-radius: 20px; overflow: hidden; }
-  .wave-section::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 70% 30%, rgba(255,255,255,0.05) 0%, transparent 60%); pointer-events: none; }
-  .wave-label { font-size: 10px; letter-spacing: 3px; color: rgba(255,255,255,0.5); text-transform: uppercase; margin-bottom: 2px; font-weight: 600; }
-  .wave-title { font-family: "Bebas Neue", sans-serif; font-size: 24px; letter-spacing: 3px; color: #fff; margin-bottom: 8px; }
-  .wave-gif-wrap { position: relative; width: 160px; height: 160px; margin: 0 auto; display: flex; align-items: center; justify-content: center; }
-  .wave-gif { width: 160px; height: 160px; object-fit: contain; display: block; transition: transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.5s, opacity 0.4s; transform: scale(0.35); opacity: 0.5; filter: brightness(0.7); pointer-events: none; }
-  .wave-gif.playing { transform: scale(1); opacity: 1; filter: brightness(1.1); }
-  .wave-play-ring { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; transition: opacity 0.4s; }
-  .wave-play-ring-inner { width: 52px; height: 52px; background: rgba(255,255,255,0.15); border: 1.5px solid rgba(255,255,255,0.4); border-radius: 50%; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
-  .wave-gif.playing ~ .wave-play-ring { opacity: 0; }
-  .wave-status { font-size: 10px; color: rgba(255,255,255,0.4); margin-top: 8px; letter-spacing: 1px; text-transform: uppercase; }
+  .wave-section { cursor: pointer; position: relative; margin: 0 16px 8px; border-radius: 20px; overflow: hidden; background: #000; }
+  .wave-label { font-size: 10px; letter-spacing: 3px; color: rgba(255,255,255,0.4); text-transform: uppercase; font-weight: 600; position: absolute; top: 16px; left: 0; right: 0; text-align: center; z-index: 2; pointer-events: none; }
+  .wave-title { font-family: "Bebas Neue", sans-serif; font-size: 26px; letter-spacing: 4px; color: #fff; position: absolute; top: 30px; left: 0; right: 0; text-align: center; z-index: 2; pointer-events: none; }
+  .wave-canvas-wrap { position: relative; width: 100%; height: 200px; display: block; }
+  #waveCanvas { width: 100%; height: 200px; display: block; border-radius: 20px; }
+  .wave-status { font-size: 10px; color: rgba(255,255,255,0.35); letter-spacing: 1px; text-transform: uppercase; position: absolute; bottom: 14px; left: 0; right: 0; text-align: center; z-index: 2; pointer-events: none; }
+  .wave-play-btn { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 3; }
+  .wave-play-btn-inner { width: 54px; height: 54px; background: rgba(255,255,255,0.12); border: 1.5px solid rgba(255,255,255,0.35); border-radius: 50%; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(6px); transition: opacity 0.4s, transform 0.3s; }
+  .wave-play-btn-inner.hidden { opacity: 0; transform: scale(0.8); pointer-events: none; }
 
   /* ── СЕКЦИИ ГЛАВНОЙ ── */
   .home-section { padding: 16px 16px 8px; }
@@ -236,11 +234,7 @@
   .rec-album-name { font-size: 12px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .rec-album-artist { font-size: 11px; color: #555; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-  .wave-gif { width: 140px; height: 140px; object-fit: contain; transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s; transform: scale(0.5); opacity: 0.6; cursor: pointer; }
-  .wave-gif.playing { transform: scale(1); opacity: 1; }
-  .wave-gif-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
-  .wave-play-ring { width: 52px; height: 52px; background: rgba(255,255,255,0.1); border: 1.5px solid rgba(255,255,255,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: opacity 0.3s; }
-  .wave-gif.playing + .wave-gif-overlay .wave-play-ring { opacity: 0; }
+  /* wave-gif styles above */
 
   .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: var(--bg3); color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 12px; letter-spacing: 0.5px; font-weight: 600; white-space: nowrap; opacity: 0; transition: opacity 0.3s; z-index: 999; pointer-events: none; border: var(--border); }
   .toast.show { opacity: 1; }
@@ -332,19 +326,19 @@
         <div class="home-greeting">Добро пожаловать</div>
         <div class="home-name" id="home-user-name">LIBAUD</div>
       </div>
-      <div class="wave-section" style="text-align:center;padding:16px 20px 20px;">
+      <div class="wave-section" onclick="startWave()">
         <div class="wave-label">Персональное радио</div>
         <div class="wave-title">LIBAUD FM</div>
-        <div class="wave-gif-wrap" onclick="startWave()">
-          <img id="waveGif" class="wave-gif" src="/wave.gif" alt="wave">
-          <div class="wave-gif-overlay">
-            <div class="wave-play-ring">
-              <svg id="wave-play-icon" width="18" height="18" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-              <svg id="wave-pause-icon" width="18" height="18" viewBox="0 0 24 24" fill="#fff" style="display:none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+        <div class="wave-canvas-wrap">
+          <canvas id="waveCanvas"></canvas>
+          <div class="wave-play-btn" id="wave-play-btn">
+            <div class="wave-play-btn-inner" id="wave-play-btn-inner">
+              <svg id="wave-play-icon" width="20" height="20" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              <svg id="wave-pause-icon" width="20" height="20" viewBox="0 0 24 24" fill="#fff" style="display:none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
             </div>
           </div>
+          <div class="wave-status" id="wave-status">На основе твоих вкусов</div>
         </div>
-        <div class="wave-status" id="wave-status">На основе твоих вкусов</div>
       </div>
 
       <!-- СБОРНИКИ -->
@@ -402,8 +396,8 @@
       </div>
     </div>
 
-    <div id="sec-all" class="section">
-      <div class="search-wrap" style="padding:14px 0 10px;">
+    <div id="sec-all" class="section" style="background:var(--bg);">
+      <div class="search-wrap" style="padding:12px 16px 10px;">
         <div class="search-box">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input type="text" id="search-input" placeholder="Исполнитель, трек...">
@@ -412,7 +406,7 @@
           </button>
         </div>
       </div>
-      <div id="search-results">
+      <div id="search-results" style="background:var(--bg);">
         <div class="section-label" style="display:flex;align-items:center;justify-content:space-between;">
           <span id="search-label">История</span>
         </div>
@@ -680,11 +674,189 @@ async function startWave() {
 function updateWaveBtn() {
   const pi = document.getElementById('wave-play-icon');
   const pa = document.getElementById('wave-pause-icon');
-  const gif = document.getElementById('waveGif');
+  const btnInner = document.getElementById('wave-play-btn-inner');
   if (pi) pi.style.display = waveIsPlaying ? 'none' : 'block';
   if (pa) pa.style.display = waveIsPlaying ? 'block' : 'none';
-  if (gif) gif.classList.toggle('playing', waveIsPlaying);
+  if (btnInner) btnInner.classList.toggle('hidden', waveIsPlaying);
+  // Ускоряем/замедляем canvas анимацию
+  if (window._waveAnim) window._waveAnim.setPlaying(waveIsPlaying);
 }
+
+// ── CANVAS ВОЛНА ──
+(function initWaveCanvas() {
+  const canvas = document.getElementById('waveCanvas');
+  if (!canvas) return;
+
+  const dpr = window.devicePixelRatio || 1;
+  function resize() {
+    const w = canvas.offsetWidth, h = canvas.offsetHeight;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  const ctx = canvas.getContext('2d');
+  let playing = false;
+  let animFrame;
+
+  // Параметры лучей
+  const RAY_COUNT = 80;
+  const rays = Array.from({ length: RAY_COUNT }, (_, i) => ({
+    angle: (i / RAY_COUNT) * Math.PI * 2,
+    baseLen: 0.12 + Math.random() * 0.18,
+    speed: 0.3 + Math.random() * 1.2,
+    phase: Math.random() * Math.PI * 2,
+    width: 0.4 + Math.random() * 1.2,
+    chaos: Math.random() * 0.6,
+    secondary: Math.random() > 0.6, // вторичный луч (короче)
+  }));
+
+  // Внутренние частицы
+  const PARTICLE_COUNT = 30;
+  const particles = Array.from({ length: PARTICLE_COUNT }, () => ({
+    angle: Math.random() * Math.PI * 2,
+    r: 0.02 + Math.random() * 0.06,
+    speed: 0.5 + Math.random() * 1.5,
+    phase: Math.random() * Math.PI * 2,
+    size: 0.5 + Math.random() * 1.5,
+  }));
+
+  let t = 0;
+  let energyTarget = 0, energy = 0;
+
+  function draw() {
+    const W = canvas.width, H = canvas.height;
+    const cx = W / 2, cy = H / 2;
+    const R = Math.min(W, H) * 0.38; // базовый радиус
+
+    ctx.clearRect(0, 0, W, H);
+
+    // Фон — чёрный
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+
+    // Плавное изменение energy
+    energy += (energyTarget - energy) * 0.04;
+    const e = energy;
+
+    const speed = playing ? 1.0 : 0.25;
+    t += 0.016 * speed;
+
+    // Центральное свечение
+    if (e > 0.05) {
+      const glowR = R * (0.25 + e * 0.15);
+      const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowR);
+      glow.addColorStop(0, `rgba(255,255,255,${0.08 * e})`);
+      glow.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(cx, cy, glowR, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Лучи
+    rays.forEach(ray => {
+      const chaos = Math.sin(t * ray.speed + ray.phase) * 0.5 +
+                    Math.sin(t * ray.speed * 1.7 + ray.phase * 1.3) * 0.3 +
+                    Math.sin(t * ray.speed * 0.4 + ray.phase * 2.1) * 0.2;
+
+      const lenMult = 0.3 + e * 0.7 + chaos * ray.chaos;
+      const len = R * ray.baseLen * lenMult * (playing ? 1.0 : 0.5);
+      const startR = R * (0.18 + e * 0.05);
+
+      const angleJitter = Math.sin(t * ray.speed * 0.8 + ray.phase) * 0.04 * e;
+      const angle = ray.angle + angleJitter;
+
+      const x1 = cx + Math.cos(angle) * startR;
+      const y1 = cy + Math.sin(angle) * startR;
+      const x2 = cx + Math.cos(angle) * (startR + len);
+      const y2 = cy + Math.sin(angle) * (startR + len);
+
+      const alpha = (0.15 + e * 0.7) * (0.5 + chaos * 0.5);
+      const w = ray.width * (0.5 + e * 0.8) * dpr;
+
+      // Основной луч
+      const grad = ctx.createLinearGradient(x1, y1, x2, y2);
+      grad.addColorStop(0, `rgba(255,255,255,${Math.min(1, alpha * 1.2)})`);
+      grad.addColorStop(0.6, `rgba(255,255,255,${alpha * 0.6})`);
+      grad.addColorStop(1, 'rgba(255,255,255,0)');
+
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = Math.max(0.5, w);
+      ctx.lineCap = 'round';
+      ctx.stroke();
+
+      // Вторичный луч (тонкий, длиннее)
+      if (ray.secondary && e > 0.2) {
+        const len2 = len * (1.2 + Math.random() * 0.3);
+        const x2b = cx + Math.cos(angle + 0.02) * (startR + len2);
+        const y2b = cy + Math.sin(angle + 0.02) * (startR + len2);
+        const grad2 = ctx.createLinearGradient(x1, y1, x2b, y2b);
+        grad2.addColorStop(0, `rgba(255,255,255,${alpha * 0.5})`);
+        grad2.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2b, y2b);
+        ctx.strokeStyle = grad2;
+        ctx.lineWidth = Math.max(0.3, w * 0.4);
+        ctx.stroke();
+      }
+    });
+
+    // Центральный круг
+    const coreR = R * (0.16 + e * 0.04 + Math.sin(t * 1.2) * 0.01 * e);
+    const coreGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreR);
+    coreGrad.addColorStop(0, `rgba(255,255,255,${0.5 + e * 0.4})`);
+    coreGrad.addColorStop(0.5, `rgba(200,200,200,${0.2 + e * 0.3})`);
+    coreGrad.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = coreGrad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, coreR, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Частицы вокруг ядра
+    if (e > 0.1) {
+      particles.forEach(p => {
+        const pr = R * (p.r + 0.05 * e) + Math.sin(t * p.speed + p.phase) * R * 0.03 * e;
+        const pa2 = p.angle + t * p.speed * 0.3;
+        const px = cx + Math.cos(pa2) * pr;
+        const py = cy + Math.sin(pa2) * pr;
+        const palpha = (0.3 + e * 0.6) * (0.5 + Math.sin(t * p.speed * 2 + p.phase) * 0.5);
+        ctx.beginPath();
+        ctx.arc(px, py, p.size * dpr * 0.4, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,255,${palpha})`;
+        ctx.fill();
+      });
+    }
+
+    animFrame = requestAnimationFrame(draw);
+  }
+
+  // Слушаем аудио для energy
+  function syncEnergy() {
+    if (window.audio) {
+      const isPlaying = !window.audio.paused;
+      energyTarget = isPlaying ? 1.0 : 0.15;
+    } else {
+      energyTarget = 0.15;
+    }
+    setTimeout(syncEnergy, 200);
+  }
+  syncEnergy();
+
+  draw();
+
+  window._waveAnim = {
+    setPlaying(p) {
+      playing = p;
+      energyTarget = p ? 1.0 : 0.15;
+    }
+  };
+})();
 
 // ── AI РЕКОМЕНДАЦИИ ──
 // ── СБОРНИКИ — статические редакторские плейлисты ──
