@@ -11,7 +11,24 @@
 <meta name="apple-mobile-web-app-title" content="Libaud">
 <link rel="manifest" href="/manifest.json">
 <link rel="apple-touch-icon" href="/icon-192.png">
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://telegram.org/js/telegram-web-app.js">
+// ── СБРОС ДАННЫХ ──
+function openResetModal() {
+  document.getElementById('reset-modal').classList.add('open');
+}
+function closeResetModal(e) {
+  if (e && e.target !== document.getElementById('reset-modal')) return;
+  document.getElementById('reset-modal').classList.remove('open');
+}
+function resetAllData() {
+  localStorage.clear();
+  // Останавливаем аудио
+  if (window.audio) { audio.pause(); audio.src = ''; }
+  showToast('Данные сброшены');
+  setTimeout(() => location.reload(), 800);
+}
+
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Anton&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -308,13 +325,80 @@
 
   /* ── СЕКЦИЯ АРТИСТА В ВОЛНЕ ── */
 
+
+  /* ── ОНБОРДИНГ ── */
+  .onboarding {
+    position: fixed; inset: 0; z-index: 500;
+    background: var(--bg);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .onboarding.hidden { display: none; }
+  .ob-header { padding: 20px 20px 0; flex-shrink: 0; }
+  .ob-step { font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #444; margin-bottom: 8px; }
+  .ob-title { font-family: 'Bebas Neue', sans-serif; font-size: 32px; letter-spacing: 2px; color: #fff; line-height: 1.1; }
+  .ob-sub { font-size: 13px; color: #555; margin-top: 6px; font-weight: 500; }
+  .ob-search { margin: 14px 20px 0; position: relative; }
+  .ob-search input { width: 100%; background: var(--bg2); border: var(--border); border-radius: 14px; padding: 11px 16px 11px 40px; color: #fff; font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 500; outline: none; }
+  .ob-search input::placeholder { color: #444; }
+  .ob-search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #444; pointer-events: none; }
+  .ob-search-results { position: absolute; top: calc(100% + 6px); left: 0; right: 0; background: var(--bg2); border: var(--border); border-radius: 14px; z-index: 10; max-height: 200px; overflow-y: auto; scrollbar-width: none; }
+  .ob-search-results::-webkit-scrollbar { display: none; }
+  .ob-search-result-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; cursor: pointer; transition: background 0.1s; }
+  .ob-search-result-item:active { background: var(--bg3); }
+  .ob-search-result-item:first-child { border-radius: 14px 14px 0 0; }
+  .ob-search-result-item:last-child { border-radius: 0 0 14px 14px; }
+  .ob-result-cover { width: 36px; height: 36px; border-radius: 50%; background: var(--bg3); overflow: hidden; flex-shrink: 0; }
+  .ob-result-cover img { width: 100%; height: 100%; object-fit: cover; }
+  .ob-result-name { font-size: 13px; font-weight: 700; color: #fff; }
+  .ob-result-genre { font-size: 11px; color: #555; }
+  .ob-grid-wrap { flex: 1; overflow-y: auto; scrollbar-width: none; padding: 14px 20px 0; }
+  .ob-grid-wrap::-webkit-scrollbar { display: none; }
+  .ob-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding-bottom: 100px; }
+  .ob-artist-card { cursor: pointer; position: relative; border-radius: 14px; overflow: hidden; aspect-ratio: 1; background: var(--bg3); transition: transform 0.15s; }
+  .ob-artist-card:active { transform: scale(0.95); }
+  .ob-artist-card.selected::after { content: ''; position: absolute; inset: 0; border: 2.5px solid #fff; border-radius: 14px; pointer-events: none; }
+  .ob-artist-card.selected .ob-card-check { opacity: 1; }
+  .ob-card-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .ob-card-grad { position: absolute; bottom: 0; left: 0; right: 0; padding: 20px 8px 8px; background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%); }
+  .ob-card-name { font-size: 11px; font-weight: 700; color: #fff; text-align: center; line-height: 1.2; }
+  .ob-card-check { position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; flex-shrink: 0; }
+  .ob-card-check svg { color: #000; }
+  .ob-footer { position: fixed; bottom: 0; left: 0; right: 0; padding: 12px 20px; padding-bottom: calc(12px + env(safe-area-inset-bottom)); background: linear-gradient(to top, var(--bg) 60%, transparent); }
+  .ob-btn { width: 100%; padding: 16px; background: #fff; border: none; border-radius: 16px; font-size: 16px; font-weight: 700; color: #000; cursor: pointer; transition: opacity 0.15s; opacity: 0.3; }
+  .ob-btn.active { opacity: 1; }
+  .ob-btn:active { opacity: 0.85; }
+  .ob-selected-count { font-size: 12px; color: #555; text-align: center; margin-top: 8px; font-weight: 600; }
+
+  /* ── МОДАЛКА СБРОСА ── */
+  .reset-modal {
+    position: fixed; inset: 0; z-index: 600;
+    background: rgba(0,0,0,0.7); backdrop-filter: blur(8px);
+    display: flex; align-items: flex-end; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity 0.25s;
+  }
+  .reset-modal.open { opacity: 1; pointer-events: all; }
+  .reset-sheet {
+    width: 100%; background: #1a1a1a; border-radius: 20px 20px 0 0;
+    padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
+    transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.32,0.72,0,1);
+    border-top: 1px solid #2a2a2a;
+  }
+  .reset-modal.open .reset-sheet { transform: translateY(0); }
+  .reset-handle { width: 36px; height: 4px; background: #333; border-radius: 2px; margin: 0 auto 20px; }
+  .reset-title { font-size: 17px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+  .reset-sub { font-size: 13px; color: #555; margin-bottom: 20px; }
+  .reset-btn { width: 100%; padding: 14px; border-radius: 14px; font-size: 15px; font-weight: 700; cursor: pointer; border: none; margin-bottom: 10px; transition: opacity 0.15s; }
+  .reset-btn:active { opacity: 0.8; }
+  .reset-btn-danger { background: #ff3b30; color: #fff; }
+  .reset-btn-cancel { background: #2a2a2a; color: #fff; }
 </style>
 </head>
 <body>
 <div id="app">
   <div class="header">
     <div class="header-title">LIBAUD</div>
-    <div class="avatar" id="avatar">
+    <div class="avatar" id="avatar" onclick="openResetModal()" style="cursor:pointer;">
       <img id="avatar-img" src="" style="display:none">
       <span id="avatar-letter">?</span>
     </div>
@@ -353,7 +437,7 @@
       <div class="home-section">
         <div class="home-section-header">
           <div class="home-section-title">Открытия</div>
-          <button class="home-section-more" onclick="loadAiRecs()">Обновить</button>
+          <button class="home-section-more" onclick="loadAiRecs(true)">Обновить</button>
         </div>
         <div class="h-scroll" id="ai-recs-list">
           <div style="color:#999;font-size:13px;padding:20px 0">Загружаю...</div>
@@ -364,7 +448,7 @@
       <div class="home-section" id="rec-albums-section">
         <div class="home-section-header">
           <div class="home-section-title">Альбомы для тебя</div>
-          <button class="home-section-more" onclick="loadRecAlbums()">Обновить</button>
+          <button class="home-section-more" onclick="loadRecAlbums(true)">Обновить</button>
         </div>
         <div class="h-scroll" id="rec-albums-list">
           <div style="color:#999;font-size:13px;padding:20px 0">Загружаю...</div>
@@ -375,7 +459,7 @@
       <div class="home-section">
         <div class="home-section-header">
           <div class="home-section-title">Похожие треки</div>
-          <button class="home-section-more" onclick="loadRelated()">Обновить</button>
+          <button class="home-section-more" onclick="loadRelated(true)">Обновить</button>
         </div>
         <div class="h-scroll" id="related-list">
           <div style="color:#999;font-size:13px;padding:20px 0">Слушай музыку чтобы появились рекомендации</div>
@@ -549,6 +633,28 @@
       <span>Избранное</span>
     </button>
   </nav>
+</div>
+
+
+<!-- ОНБОРДИНГ -->
+<div class="onboarding" id="onboarding">
+  <div class="ob-header">
+    <div class="ob-step">Шаг 1 из 1</div>
+    <div class="ob-title">Какую музыку<br>ты слушаешь?</div>
+    <div class="ob-sub">Выбери артистов — минимум 3</div>
+    <div class="ob-search">
+      <svg class="ob-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="ob-search-input" placeholder="Найти артиста...">
+      <div class="ob-search-results" id="ob-search-results" style="display:none;"></div>
+    </div>
+  </div>
+  <div class="ob-grid-wrap">
+    <div class="ob-grid" id="ob-grid"></div>
+  </div>
+  <div class="ob-footer">
+    <button class="ob-btn" id="ob-btn" onclick="finishOnboarding()">Продолжить</button>
+    <div class="ob-selected-count" id="ob-selected-count">Выбери хотя бы 3 артиста</div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -913,13 +1019,17 @@ async function playMix(mixId) {
 }
 
 // ── РЕКОМЕНДОВАННЫЕ АЛЬБОМЫ ──
-async function loadRecAlbums() {
+async function loadRecAlbums(force = false) {
   const container = document.getElementById('rec-albums-list');
   if (!container) return;
   const historyArtists = [...new Set(history.slice(0, 15).map(t => t.artist))];
   if (!historyArtists.length) {
     container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Слушай музыку чтобы появились рекомендации</div>';
     return;
+  }
+  if (!force) {
+    const cached = getCachedRecs('albums');
+    if (cached && cached.length) { renderRecAlbums(cached); return; }
   }
   container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Подбираю альбомы...</div>';
   try {
@@ -944,7 +1054,7 @@ async function loadRecAlbums() {
   }
 }
 
-async function loadAiRecs() {
+async function loadAiRecs(force = false) {
   const container = document.getElementById('ai-recs-list');
   if (!container) return;
   const historyArtists = [...new Set(history.slice(0, 15).map(t => t.artist))];
@@ -952,11 +1062,17 @@ async function loadAiRecs() {
     container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Слушай музыку чтобы появились рекомендации</div>';
     return;
   }
+  // Дневной кэш
+  if (!force) {
+    const cached = getCachedRecs('ai');
+    if (cached && cached.length) { renderHScroll('ai-recs-list', cached); return; }
+  }
   container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Подбираю...</div>';
   try {
     const res = await fetch(`/api/search?action=ai_recommend&artists=${encodeURIComponent(historyArtists.join(','))}&limit=12`);
     const data = await res.json();
     if (data.tracks && data.tracks.length > 0) {
+      setCachedRecs('ai', data.tracks);
       renderHScroll('ai-recs-list', data.tracks);
       return;
     }
@@ -975,7 +1091,7 @@ async function loadAiRecs() {
 }
 
 // ── ПОХОЖИЕ ТРЕКИ ──
-async function loadRelated() {
+async function loadRelated(force = false) {
   const container = document.getElementById('related-list');
   if (!container) return;
   const lastTrack = history[0];
@@ -983,11 +1099,16 @@ async function loadRelated() {
     container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Слушай музыку чтобы появились рекомендации</div>';
     return;
   }
+  if (!force) {
+    const cached = getCachedRecs('related');
+    if (cached && cached.length) { renderHScroll('related-list', cached); return; }
+  }
   container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Ищу похожее...</div>';
   try {
     const res = await fetch(`/api/search?action=related&track=${encodeURIComponent(lastTrack.artist + ' - ' + lastTrack.name)}&limit=12`);
     const data = await res.json();
     if (data.tracks && data.tracks.length > 0) {
+      setCachedRecs('related', data.tracks);
       renderHScroll('related-list', data.tracks);
       return;
     }
@@ -1495,15 +1616,235 @@ async function loadDownloadsFromServer() {
     renderOffline();
   } catch(e) { console.warn('Load downloads error:', e); }
 }
+
+// ════════════════════════════════════════════
+// ── ОНБОРДИНГ ──
+// ════════════════════════════════════════════
+
+// Популярные артисты для сетки онбординга (смесь жанров)
+const OB_SEED_ARTISTS = [
+  { name: 'Drake', genre: 'Hip-Hop' },
+  { name: 'The Weeknd', genre: 'R&B' },
+  { name: 'Kendrick Lamar', genre: 'Hip-Hop' },
+  { name: 'Taylor Swift', genre: 'Pop' },
+  { name: 'Post Malone', genre: 'Hip-Hop' },
+  { name: 'Billie Eilish', genre: 'Pop' },
+  { name: 'Travis Scott', genre: 'Hip-Hop' },
+  { name: 'Ariana Grande', genre: 'Pop' },
+  { name: 'Bad Bunny', genre: 'Reggaeton' },
+  { name: 'Saluki', genre: 'Rap RU' },
+  { name: 'Скриптонит', genre: 'Rap RU' },
+  { name: 'MORGENSHTERN', genre: 'Rap RU' },
+  { name: 'Playboi Carti', genre: 'Hip-Hop' },
+  { name: 'SZA', genre: 'R&B' },
+  { name: 'Lil Baby', genre: 'Hip-Hop' },
+  { name: 'Doja Cat', genre: 'Pop' },
+  { name: 'Future', genre: 'Trap' },
+  { name: 'Coldplay', genre: 'Rock' },
+  { name: 'Kanye West', genre: 'Hip-Hop' },
+  { name: 'Lil Uzi Vert', genre: 'Rap' },
+  { name: 'Фараон', genre: 'Rap RU' },
+  { name: 'Oxxxymiron', genre: 'Rap RU' },
+  { name: 'Miyagi', genre: 'Rap RU' },
+  { name: 'Harry Styles', genre: 'Pop' },
+  { name: 'Metro Boomin', genre: 'Trap' },
+  { name: 'Rod Wave', genre: 'R&B' },
+  { name: 'Juice WRLD', genre: 'Emo Rap' },
+  { name: 'Eminem', genre: 'Hip-Hop' },
+];
+
+let obSelectedArtists = new Set(); // имена выбранных артистов
+let obArtistData = {}; // {name: {id, cover}}
+let obSearchTimer = null;
+
+function checkOnboarding() {
+  const done = localStorage.getItem('ob_done');
+  if (!done) {
+    document.getElementById('onboarding').classList.remove('hidden');
+    loadObGrid();
+  } else {
+    document.getElementById('onboarding').classList.add('hidden');
+  }
+}
+
+async function loadObGrid() {
+  const grid = document.getElementById('ob-grid');
+  grid.innerHTML = OB_SEED_ARTISTS.map(a => `
+    <div class="ob-artist-card" id="ob-card-${CSS.escape(a.name)}" onclick="toggleObArtist('${a.name.replace(/'/g,"\'")}')">
+      <div style="width:100%;height:100%;background:var(--bg3);display:flex;align-items:center;justify-content:center;">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      </div>
+      <div class="ob-card-grad">
+        <div class="ob-card-name">${a.name}</div>
+      </div>
+      <div class="ob-card-check">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+    </div>`).join('');
+
+  // Загружаем фото параллельно батчами по 6
+  for (let i = 0; i < OB_SEED_ARTISTS.length; i += 6) {
+    const batch = OB_SEED_ARTISTS.slice(i, i + 6);
+    await Promise.all(batch.map(a => loadObArtistPhoto(a.name)));
+  }
+}
+
+async function loadObArtistPhoto(name) {
+  try {
+    const res = await fetch('/api/search?q=' + encodeURIComponent(name) + '&action=search');
+    const data = await res.json();
+    const artist = data.artists?.[0];
+    if (!artist) return;
+    obArtistData[name] = { id: artist.id, cover: artist.cover };
+    const card = document.getElementById('ob-card-' + CSS.escape(name));
+    if (!card || !artist.cover) return;
+    card.innerHTML = `
+      <img class="ob-card-img" src="${artist.cover}" loading="lazy">
+      <div class="ob-card-grad"><div class="ob-card-name">${name}</div></div>
+      <div class="ob-card-check">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>`;
+    if (obSelectedArtists.has(name)) card.classList.add('selected');
+  } catch(e) {}
+}
+
+function toggleObArtist(name) {
+  if (obSelectedArtists.has(name)) {
+    obSelectedArtists.delete(name);
+    document.getElementById('ob-card-' + CSS.escape(name))?.classList.remove('selected');
+  } else {
+    obSelectedArtists.add(name);
+    document.getElementById('ob-card-' + CSS.escape(name))?.classList.add('selected');
+  }
+  updateObBtn();
+}
+
+function updateObBtn() {
+  const count = obSelectedArtists.size;
+  const btn = document.getElementById('ob-btn');
+  const countEl = document.getElementById('ob-selected-count');
+  btn.classList.toggle('active', count >= 3);
+  countEl.textContent = count >= 3
+    ? `Выбрано ${count} артист${count === 1 ? '' : count < 5 ? 'а' : 'ов'}`
+    : `Ещё ${3 - count} — и можно продолжить`;
+}
+
+// Поиск в онбординге
+document.addEventListener('DOMContentLoaded', () => {
+  const inp = document.getElementById('ob-search-input');
+  if (!inp) return;
+  inp.addEventListener('input', () => {
+    clearTimeout(obSearchTimer);
+    const q = inp.value.trim();
+    if (!q) { document.getElementById('ob-search-results').style.display = 'none'; return; }
+    obSearchTimer = setTimeout(() => searchObArtists(q), 400);
+  });
+  inp.addEventListener('blur', () => {
+    setTimeout(() => { document.getElementById('ob-search-results').style.display = 'none'; }, 200);
+  });
+});
+
+async function searchObArtists(q) {
+  try {
+    const res = await fetch('/api/search?q=' + encodeURIComponent(q) + '&action=search');
+    const data = await res.json();
+    const results = document.getElementById('ob-search-results');
+    const artists = (data.artists || []).slice(0, 5);
+    if (!artists.length) { results.style.display = 'none'; return; }
+    results.style.display = 'block';
+    results.innerHTML = artists.map(a => `
+      <div class="ob-search-result-item" onclick="addObArtistFromSearch('${a.id}','${a.name.replace(/'/g,"\'")}','${(a.cover||'').replace(/'/g,"\'")}')">
+        <div class="ob-result-cover">
+          ${a.cover ? `<img src="${a.cover}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : ''}
+        </div>
+        <div>
+          <div class="ob-result-name">${a.name}</div>
+          <div class="ob-result-genre">${a.genres?.[0] || ''}</div>
+        </div>
+        ${obSelectedArtists.has(a.name) ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" style="margin-left:auto"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
+      </div>`).join('');
+  } catch(e) {}
+}
+
+function addObArtistFromSearch(id, name, cover) {
+  obArtistData[name] = { id, cover };
+  // Добавляем карточку в сетку если ещё нет
+  if (!document.getElementById('ob-card-' + CSS.escape(name))) {
+    const grid = document.getElementById('ob-grid');
+    const card = document.createElement('div');
+    card.className = 'ob-artist-card';
+    card.id = 'ob-card-' + CSS.escape(name);
+    card.onclick = () => toggleObArtist(name);
+    card.innerHTML = `
+      ${cover ? `<img class="ob-card-img" src="${cover}">` : '<div style="width:100%;height:100%;background:var(--bg3);"></div>'}
+      <div class="ob-card-grad"><div class="ob-card-name">${name}</div></div>
+      <div class="ob-card-check"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>`;
+    grid.prepend(card);
+  }
+  obSelectedArtists.add(name);
+  document.getElementById('ob-card-' + CSS.escape(name))?.classList.add('selected');
+  document.getElementById('ob-search-results').style.display = 'none';
+  document.getElementById('ob-search-input').value = '';
+  updateObBtn();
+}
+
+async function finishOnboarding() {
+  if (obSelectedArtists.size < 3) return;
+  const selected = [...obSelectedArtists];
+  // Сохраняем в localStorage
+  localStorage.setItem('ob_done', '1');
+  localStorage.setItem('ob_artists', JSON.stringify(selected));
+  // Добавляем в historySeed для алгоритмов
+  const seedTracks = selected.map(name => ({
+    id: 'seed_' + name, name: '...', artist: name,
+    artist_id: obArtistData[name]?.id || '',
+    cover: obArtistData[name]?.cover || null, album: '', dur: '0:00'
+  }));
+  history = [...seedTracks, ...history];
+  localStorage.setItem('history', JSON.stringify(history.slice(0, 50)));
+  // Скрываем онбординг
+  document.getElementById('onboarding').classList.add('hidden');
+  // Запускаем рекомендации
+  showToast('🎵 Подбираю музыку для тебя...');
+  setTimeout(() => { loadRelated(); loadAiRecs(); loadRecAlbums(); }, 300);
+}
+
+// ════════════════════════════════════════════
+// ── РЕКОМЕНДАЦИИ РАЗ В ДЕНЬ ──
+// ════════════════════════════════════════════
+
+function getCachedRecs(key) {
+  try {
+    const raw = localStorage.getItem('recs_cache_' + key);
+    if (!raw) return null;
+    const { data, date } = JSON.parse(raw);
+    const today = new Date().toDateString();
+    if (date !== today) return null; // устарело
+    return data;
+  } catch { return null; }
+}
+
+function setCachedRecs(key, data) {
+  try {
+    localStorage.setItem('recs_cache_' + key, JSON.stringify({
+      data, date: new Date().toDateString()
+    }));
+  } catch {}
+}
+
+function invalidateDailyRecs() {
+  // Вызывать при значительном изменении вкусов (не нужно сейчас)
+  ['ai', 'related', 'albums'].forEach(k => localStorage.removeItem('recs_cache_' + k));
+}
+
 loadDownloadsFromServer();
+checkOnboarding();
 setTimeout(() => {
   showHistoryInSearch();
   renderPlaylists();
   renderMixes();
   if (history.length > 0) { loadRelated(); loadAiRecs(); loadRecAlbums(); }
 }, 300);
-
-function initWaveCanvas() {} // заглушка — гифка уже есть в HTML
 
 function renderOffline() {
   const list = document.getElementById('offline-list');
@@ -1633,15 +1974,14 @@ function switchTab(tab, tabEl, navEl) {
   if (tab === 'all') {
     // Показываем историю пока нет поиска
     const inp = document.getElementById('search-input');
-    if (inp) inp.focus();
     showHistoryInSearch();
   }
   if (tab === 'home') {
     renderPlaylists();
     renderMixes();
-    loadRelated();
-    loadAiRecs();
-    loadRecAlbums();
+    loadRelated(); // использует кэш
+    loadAiRecs(); // использует кэш
+    loadRecAlbums(); // использует кэш
   }
 }
 
@@ -1957,6 +2297,34 @@ if ('serviceWorker' in navigator) {
     });
   });
 }
+
+// ── СБРОС ДАННЫХ ──
+function openResetModal() {
+  document.getElementById('reset-modal').classList.add('open');
+}
+function closeResetModal(e) {
+  if (e && e.target !== document.getElementById('reset-modal')) return;
+  document.getElementById('reset-modal').classList.remove('open');
+}
+function resetAllData() {
+  localStorage.clear();
+  // Останавливаем аудио
+  if (window.audio) { audio.pause(); audio.src = ''; }
+  showToast('Данные сброшены');
+  setTimeout(() => location.reload(), 800);
+}
+
 </script>
+
+<!-- МОДАЛКА СБРОСА -->
+<div class="reset-modal" id="reset-modal" onclick="closeResetModal(event)">
+  <div class="reset-sheet">
+    <div class="reset-handle"></div>
+    <div class="reset-title">Сбросить данные</div>
+    <div class="reset-sub">История, избранное, рекомендации и онбординг будут удалены</div>
+    <button class="reset-btn reset-btn-danger" onclick="resetAllData()">Сбросить всё</button>
+    <button class="reset-btn reset-btn-cancel" onclick="closeResetModal()">Отмена</button>
+  </div>
+</div>
 </body>
 </html>
