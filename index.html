@@ -703,29 +703,14 @@ async function startWave() {
     return;
   }
   document.getElementById('wave-status').textContent = 'Подбираю треки...';
-  // Умный алгоритм: избранное (вес 3) + частые (3+) прослушивания (вес 2) + история (вес 1)
-  const favArtists = [...new Set(favorites.map(t => t.artist))];
-  const frequentArtists = Object.entries(artistPlayCount)
-    .filter(([a, c]) => c >= 3 && !blockedArtists.has(a))
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([a]) => a);
-  const historyArtists = [...new Set(history.slice(0, 20).map(t => t.artist))].filter(a => !blockedArtists.has(a));
-
-  // Приоритет: избранное > частые > история
-  const seedArtists = [...new Set([...favArtists, ...frequentArtists, ...historyArtists])]
-    .filter(a => !blockedArtists.has(a))
-    .slice(0, 10);
-
-  if (!seedArtists.length) {
-    document.getElementById('wave-status').textContent = 'Сначала послушай несколько треков';
+  // Берём IDs: онбординг + история + избранное
+  const seedIds3 = getSeedIds();
+  if (!seedIds3.length) {
+    document.getElementById('wave-status').textContent = 'Выбери артистов в настройках';
     return;
   }
   try {
-    const seedIds3 = getSeedIds();
-    const waveParams = seedIds3.length
-      ? `artist_ids=${encodeURIComponent(seedIds3.join(','))}`
-      : `artists=${encodeURIComponent(seedArtists.join(','))}`;
+    const waveParams = `artist_ids=${encodeURIComponent(seedIds3.join(','))}`;
     const res = await fetch(`/api/search?action=wave&${waveParams}&limit=20`);
     const data = await res.json();
     if (!data.tracks?.length) { document.getElementById('wave-status').textContent = 'Не удалось загрузить'; return; }
