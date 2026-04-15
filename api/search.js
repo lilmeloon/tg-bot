@@ -59,7 +59,13 @@ export default async function handler(req, res) {
   }
 
   async function getTopTracks(id) {
-    const d = await spFetch('/artists/' + id + '/top-tracks?market=US');
+    let d = await spFetch('/artists/' + id + '/top-tracks?market=US');
+    if (!d.tracks?.length) {
+      d = await spFetch('/artists/' + id + '/top-tracks?market=RU');
+    }
+    if (!d.tracks?.length) {
+      d = await spFetch('/artists/' + id + '/top-tracks?market=KZ');
+    }
     return (d.tracks || []).slice(0, 3).map(mapTrack);
   }
 
@@ -124,11 +130,16 @@ export default async function handler(req, res) {
     // ── СТРАНИЦА АРТИСТА ──
     if (action === 'artist') {
       if (!artist_id) return res.status(400).json({ error: 'Нет artist_id' });
-      const [artistData, topData, albumsData] = await Promise.all([
+      const [artistData, albumsData] = await Promise.all([
         spFetch('/artists/' + artist_id),
-        spFetch('/artists/' + artist_id + '/top-tracks?market=US'),
-        spFetch('/artists/' + artist_id + '/albums?market=US&limit=20&include_groups=album,single'),
+        spFetch('/artists/' + artist_id + '/albums?market=US&limit=20&include_groups=album,single,appears_on'),
       ]);
+
+      // Топ треки — пробуем несколько рынков
+      let topData = await spFetch('/artists/' + artist_id + '/top-tracks?market=US');
+      if (!topData.tracks?.length) topData = await spFetch('/artists/' + artist_id + '/top-tracks?market=RU');
+      if (!topData.tracks?.length) topData = await spFetch('/artists/' + artist_id + '/top-tracks?market=KZ');
+
       const artist = {
         id: artistData.id, name: artistData.name,
         cover: artistData.images[0]?.url || null,
@@ -140,7 +151,8 @@ export default async function handler(req, res) {
       return res.status(200).json({
         artist, topTracks,
         albums: allAlbums.filter(a => a.type === 'album'),
-        singles: allAlbums.filter(a => a.type === 'single').slice(0, 6),
+        singles: allAlbums.filter(a => a.type === 'single').slice(0, 8),
+        appearances: allAlbums.filter(a => a.type === 'compilation' || (a.type !== 'album' && a.type !== 'single')).slice(0, 6),
       });
     }
 
