@@ -57,11 +57,6 @@
   .track-item.playing .track-name { color: #fff; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 
-  /* ── ГЛАВНАЯ ── */
-  .home-banner { padding: 16px 16px 12px; flex-shrink: 0; }
-  .home-greeting { font-size: 12px; letter-spacing: 1px; color: #444; text-transform: uppercase; margin-bottom: 2px; font-weight: 600; }
-  .home-name { font-family: "Bebas Neue", sans-serif; font-size: 26px; letter-spacing: 2px; color: #fff; }
-
   /* ── ВОЛНА ── */
   .wave-section { cursor: pointer; position: relative; margin: 0 16px 8px; border-radius: 20px; overflow: hidden; background: #000; }
   .wave-label { font-size: 10px; letter-spacing: 3px; color: rgba(255,255,255,0.4); text-transform: uppercase; font-weight: 600; position: absolute; top: 16px; left: 0; right: 0; text-align: center; z-index: 2; pointer-events: none; }
@@ -145,8 +140,8 @@
   .ctrl.play-btn { width: 38px; height: 38px; background: #fff; color: #000; border-radius: 50%; }
   .ctrl.play-btn:active { background: #ddd; }
   .player-bottom { display: flex; align-items: center; gap: 8px; pointer-events: none; }
-  .progress-bar { flex: 1; height: 2px; background: #2a2a2a; border-radius: 2px; cursor: pointer; position: relative; pointer-events: all; }
-  .progress-fill { height: 100%; background: #fff; border-radius: 2px; width: 0%; transition: width 0.3s linear; pointer-events: none; }
+  .progress-bar { flex: 1; height: 3px; background: #2a2a2a; border-radius: 2px; cursor: pointer; position: relative; pointer-events: all; padding: 10px 0; background-clip: content-box; }
+  .progress-fill { height: 3px; background: #fff; border-radius: 2px; width: 0%; transition: width 0.3s linear; pointer-events: none; }
   .time-label { font-size: 10px; color: #444; white-space: nowrap; min-width: 60px; text-align: right; }
 
   /* ── FULLSCREEN PLAYER ── */
@@ -180,8 +175,8 @@
   .fs-fav.active { color: #fff; }
 
   .fs-progress { padding: 20px 28px 8px; flex-shrink: 0; }
-  .fs-bar { height: 3px; background: #2a2a2a; border-radius: 3px; cursor: pointer; position: relative; }
-  .fs-bar-fill { height: 100%; background: #fff; border-radius: 3px; width: 0%; transition: width 0.3s linear; pointer-events: none; }
+  .fs-bar { height: 4px; background: #2a2a2a; border-radius: 3px; cursor: pointer; position: relative; padding: 12px 0; background-clip: content-box; }
+  .fs-bar-fill { height: 4px; background: #fff; border-radius: 3px; width: 0%; transition: width 0.3s linear; pointer-events: none; }
   .fs-times { display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px; color: #444; }
 
   .fs-controls { display: flex; align-items: center; justify-content: space-between; padding: 4px 24px 8px; flex-shrink: 0; }
@@ -278,27 +273,27 @@
   /* ── СТРАНИЦА АЛЬБОМА ── */
   .album-page { position: fixed; inset: 0; z-index: 160; background: var(--bg); transform: translateX(100%); transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1); display: flex; flex-direction: column; overflow: hidden; }
   .album-page.open { transform: translateX(0); }
-  .album-header { display: flex; align-items: flex-end; gap: 16px; padding: 16px 20px 20px; background: var(--bg2); flex-shrink: 0; border-bottom: var(--border); }
-  .album-header-cover { width: 90px; height: 90px; flex-shrink: 0; border-radius: 12px; overflow: hidden; background: var(--bg3); }
+  .album-header { position: relative; display: flex; flex-direction: column; align-items: center; padding: 48px 20px 20px; flex-shrink: 0; background: linear-gradient(to bottom, var(--album-color, #1a1a1a) 0%, var(--bg) 100%); min-height: 220px; }
+  .album-header-cover { width: 160px; height: 160px; flex-shrink: 0; border-radius: 8px; overflow: hidden; background: var(--bg3); box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
   .album-header-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .album-header-info { min-width: 0; }
-  .album-header-back { position: absolute; top: 16px; left: 16px; width: 36px; height: 36px; background: rgba(255,255,255,0.1); backdrop-filter: blur(8px); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #fff; border-radius: 50%; }
-  .album-header-title { font-size: 18px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .album-header-artist { font-size: 12px; color: #555; letter-spacing: 0.5px; text-transform: uppercase; margin-top: 4px; cursor: pointer; font-weight: 600; }
-  .album-header-meta { font-size: 11px; color: #444; margin-top: 6px; }
-  .album-play-row { display: flex; gap: 10px; padding: 12px 16px; flex-shrink: 0; border-bottom: var(--border); }
+  .album-header-info { width: 100%; text-align: center; margin-top: 16px; }
+  .album-header-back { position: absolute; top: 12px; left: 12px; width: 36px; height: 36px; background: rgba(0,0,0,0.4); backdrop-filter: blur(8px); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #fff; border-radius: 50%; z-index: 5; }
+  .album-header-title { font-size: 20px; font-weight: 700; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .album-header-artist { font-size: 13px; color: rgba(255,255,255,0.6); margin-top: 4px; cursor: pointer; font-weight: 600; }
+  .album-header-meta { font-size: 11px; color: rgba(255,255,255,0.35); margin-top: 4px; }
+  .album-play-row { display: flex; gap: 10px; padding: 12px 16px; flex-shrink: 0; }
   .album-play-all { flex: 1; background: #fff; border: none; color: #000; cursor: pointer; padding: 12px 16px; border-radius: 12px; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; transition: opacity 0.15s; }
   .album-play-all:active { opacity: 0.8; }
   .album-shuffle-btn { background: var(--bg2); border: var(--border); color: #fff; cursor: pointer; padding: 12px 16px; border-radius: 12px; display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; transition: all 0.15s; }
   .album-shuffle-btn:active { background: #fff; color: #000; }
-  .album-tracks-list { flex: 1; overflow-y: auto; scrollbar-width: none; }
+  .album-tracks-list { flex: 1; overflow-y: auto; scrollbar-width: none; padding-bottom: calc(var(--player-h) + var(--nav-h) + 16px); }
   .album-tracks-list::-webkit-scrollbar { display: none; }
   .album-track-item { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-radius: 10px; cursor: pointer; transition: background 0.1s; margin: 0 8px; }
   .album-track-item:active { background: var(--bg2); }
   .album-track-num { width: 24px; text-align: center; font-size: 13px; color: #444; flex-shrink: 0; font-weight: 600; }
-  .album-track-item.playing { background: var(--bg2); }
-  .album-track-item.playing .album-track-num { color: #fff; }
-  .album-track-item.playing .track-name { color: #fff; }
+  .album-track-item.playing { background: rgba(255,255,255,0.08); }
+  .album-track-item.playing .album-track-num { color: #1db954; }
+  .album-track-item.playing .track-name { color: #1db954; }
   .album-track-item.playing .track-meta { color: #555; }
 
   /* ── ВОЛНА ── */
@@ -391,11 +386,7 @@
 
   <div class="content">
     <div id="sec-home" class="section active">
-      <div class="home-banner" id="home-banner">
-        <div class="home-greeting">Добро пожаловать</div>
-        <div class="home-name" id="home-user-name">LIBAUD</div>
-      </div>
-      <div class="wave-section" onclick="startWave()">
+      <div class="wave-section" onclick="startWave()" style="margin-top:12px;">
         <div class="wave-label">Персональное радио</div>
         <div class="wave-title">LIBAUD FM</div>
         <div class="wave-canvas-wrap">
@@ -473,11 +464,14 @@
           <button id="clear-btn" onclick="clearSearch()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
+          <button id="history-btn" onclick="toggleHistoryInSearch()" style="display:flex;cursor:pointer;color:#555;background:none;border:none;padding:2px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </button>
         </div>
       </div>
       <div id="search-results" style="background:var(--bg);">
-        <div class="section-label" style="display:flex;align-items:center;justify-content:space-between;">
-          <span id="search-label">История</span>
+        <div class="section-label" style="display:none;" id="search-label-wrap">
+          <span id="search-label">Результаты</span>
         </div>
         <div class="track-list" id="track-list">
           <div class="empty"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><p>Введи название трека<br>или исполнителя</p></div>
@@ -526,7 +520,7 @@
       </div>
     </div>
     <div class="player-bottom">
-      <div class="progress-bar" onclick="event.stopPropagation();seekAudio(event)">
+      <div class="progress-bar" onclick="event.stopPropagation();seekAudio(event)" ontouchend="event.stopPropagation();seekAudio(event)">
         <div class="progress-fill" id="progress-fill"></div>
       </div>
       <div class="time-label" id="time-label">0:00 / 0:00</div>
@@ -562,7 +556,7 @@
     </div>
 
     <div class="fs-progress">
-      <div class="fs-bar" onclick="seekAudio(event)" id="fs-bar">
+      <div class="fs-bar" onclick="seekAudio(event)" ontouchend="seekAudio(event)" id="fs-bar">
         <div class="fs-bar-fill" id="fs-bar-fill"></div>
       </div>
       <div class="fs-times">
@@ -576,8 +570,8 @@
         <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" stroke-width="2"/></svg>
       </button>
       <button class="fs-play" id="fs-play-btn" onclick="togglePlay()">
-        <svg id="fs-play-icon" width="28" height="28" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-        <svg id="fs-pause-icon" width="28" height="28" viewBox="0 0 24 24" fill="#fff" style="display:none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+        <svg id="fs-play-icon" width="28" height="28" viewBox="0 0 24 24" fill="#000"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+        <svg id="fs-pause-icon" width="28" height="28" viewBox="0 0 24 24" fill="#000" style="display:none"><rect x="5" y="3" width="5" height="18"/><rect x="14" y="3" width="5" height="18"/></svg>
       </button>
       <button class="fs-ctrl" onclick="nextTrack()">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2"/></svg>
@@ -688,20 +682,18 @@
 
 <!-- СТРАНИЦА АЛЬБОМА -->
 <div class="album-page" id="album-page">
-  <div style="position:relative;">
-    <div class="album-header" id="album-header">
-      <div class="album-header-cover">
-        <img id="album-page-cover" src="" alt="">
-      </div>
-      <div class="album-header-info">
-        <div class="album-header-title" id="album-page-title">—</div>
-        <div class="album-header-artist" id="album-page-artist" onclick="goBackToArtist()">—</div>
-        <div class="album-header-meta" id="album-page-meta"></div>
-      </div>
-    </div>
+  <div class="album-header" id="album-header">
     <button class="album-header-back" onclick="closeAlbumPage()">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
     </button>
+    <div class="album-header-cover">
+      <img id="album-page-cover" src="" alt="">
+    </div>
+    <div class="album-header-info">
+      <div class="album-header-title" id="album-page-title">—</div>
+      <div class="album-header-artist" id="album-page-artist" onclick="goBackToArtist()">—</div>
+      <div class="album-header-meta" id="album-page-meta"></div>
+    </div>
   </div>
 
   <div class="album-play-row">
@@ -1398,8 +1390,6 @@ if (user) {
     img.style.display = 'block';
     if (letter) letter.style.display = 'none';
   }
-  const homeNameEl = document.getElementById('home-user-name');
-  if (homeNameEl && user.first_name) homeNameEl.textContent = user.first_name.toUpperCase();
 }
 
 // ── АУДИО ──
@@ -1443,7 +1433,8 @@ function seekAudio(e) {
   if (!audio.duration) return;
   const bar = e.currentTarget;
   const rect = bar.getBoundingClientRect();
-  const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  const clientX = e.touches ? e.touches[0].clientX : (e.changedTouches ? e.changedTouches[0].clientX : e.clientX);
+  const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
   audio.currentTime = pct * audio.duration;
 }
 
@@ -1515,7 +1506,7 @@ if (searchInput) {
     document.getElementById('clear-btn').classList.toggle('visible', searchInput.value.length > 0);
     clearTimeout(searchTimer);
     const val = searchInput.value.trim();
-    if (!val) { showHistoryInSearch(); return; }
+    if (!val) { showSearchEmpty(); return; }
     if (val.length < 2) return;
     searchTimer = setTimeout(() => doSearch(val), 500);
   });
@@ -1524,13 +1515,37 @@ if (searchInput) {
 function clearSearch() {
   if (searchInput) searchInput.value = '';
   document.getElementById('clear-btn').classList.remove('visible');
-  showHistoryInSearch();
+  showSearchEmpty();
+}
+
+let historyVisible = false;
+
+function showSearchEmpty() {
+  historyVisible = false;
+  const labelWrap = document.getElementById('search-label-wrap');
+  if (labelWrap) labelWrap.style.display = 'none';
+  const histBtn = document.getElementById('history-btn');
+  if (histBtn) histBtn.style.color = '#555';
+  document.getElementById('track-list').innerHTML = '<div class="empty"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><p>Введи название трека<br>или исполнителя</p></div>';
+}
+
+function toggleHistoryInSearch() {
+  if (historyVisible) {
+    showSearchEmpty();
+  } else {
+    historyVisible = true;
+    const labelWrap = document.getElementById('search-label-wrap');
+    if (labelWrap) labelWrap.style.display = 'flex';
+    const label = document.getElementById('search-label');
+    if (label) label.textContent = 'История';
+    const histBtn = document.getElementById('history-btn');
+    if (histBtn) histBtn.style.color = '#fff';
+    renderList('track-list', history.slice(0, 20));
+  }
 }
 
 function showHistoryInSearch() {
-  const label = document.getElementById('search-label');
-  if (label) label.textContent = 'История';
-  renderList('track-list', history.slice(0, 15));
+  showSearchEmpty();
 }
 
 async function doSearch(query) {
@@ -1578,6 +1593,8 @@ async function playTrack(idx, source = 'all') {
   updateMiniPlayer(t);
   updateFsPlayer(t);
   updatePlayerFavBtn(t.id);
+  // Обновляем подсветку трека на странице альбома
+  updateAlbumTrackHighlight();
 
   if (!history.find(h => h.id === t.id)) {
     history.unshift(t);
@@ -1613,6 +1630,10 @@ async function playTrack(idx, source = 'all') {
     showToast('Ошибка: ' + e.message);
   }
   renderAll();
+  // Обновляем подсветку в альбоме если открыт
+  if (document.getElementById('album-page').classList.contains('open') && currentAlbumTracks.length) {
+    renderAlbumTracks(currentAlbumTracks);
+  }
 }
 
 function preloadNext() {
@@ -2124,7 +2145,6 @@ function invalidateDailyRecs() {
 loadDownloadsFromServer();
 checkOnboarding();
 setTimeout(() => {
-  showHistoryInSearch();
   renderPlaylists();
   renderMixes();
   if (history.length > 0) { loadRelated(); loadAiRecs(); loadRecAlbums(); }
@@ -2243,12 +2263,6 @@ function switchFavSub(sub) {
   if (sub === 'offline') renderOffline();
 }
 
-function showHistoryInSearch() {
-  const label = document.getElementById('search-label');
-  if (label) label.textContent = 'История';
-  renderList('track-list', history.slice(0, 20));
-}
-
 function switchTab(tab, tabEl, navEl) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.getElementById('sec-' + tab).classList.add('active');
@@ -2256,16 +2270,15 @@ function switchTab(tab, tabEl, navEl) {
   if (navEl) { document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active')); navEl.classList.add('active'); }
   if (tab === 'fav') { renderList('fav-list', favorites); }
   if (tab === 'all') {
-    // Показываем историю пока нет поиска
     const inp = document.getElementById('search-input');
-    showHistoryInSearch();
+    if (!inp || !inp.value.trim()) showSearchEmpty();
   }
   if (tab === 'home') {
     renderPlaylists();
     renderMixes();
-    loadRelated(); // использует кэш
-    loadAiRecs(); // использует кэш
-    loadRecAlbums(); // использует кэш
+    loadRelated();
+    loadAiRecs();
+    loadRecAlbums();
   }
 }
 
@@ -2432,11 +2445,13 @@ let currentAlbumArtistId = null;
 
 async function openAlbumPage(albumId, albumName) {
   const page = document.getElementById('album-page');
+  const header = document.getElementById('album-header');
   document.getElementById('album-page-title').textContent = albumName || '...';
   document.getElementById('album-page-artist').textContent = '...';
   document.getElementById('album-page-meta').textContent = '';
   document.getElementById('album-page-cover').src = '';
   document.getElementById('album-tracks-list').innerHTML = '<div style="color:#999;font-size:13px;padding:20px">Загружаю...</div>';
+  header.style.setProperty('--album-color', '#1a1a1a');
   page.classList.add('open');
 
   try {
@@ -2446,7 +2461,11 @@ async function openAlbumPage(albumId, albumName) {
     currentAlbumArtistId = data.album?.artist_id || null;
 
     const album = data.album;
-    if (album?.cover) document.getElementById('album-page-cover').src = album.cover;
+    if (album?.cover) {
+      document.getElementById('album-page-cover').src = album.cover;
+      // Извлекаем доминантный цвет из обложки
+      extractAlbumColor(album.cover);
+    }
     document.getElementById('album-page-title').textContent = album?.name || albumName;
     document.getElementById('album-page-artist').textContent = album?.artist || '';
     document.getElementById('album-page-meta').textContent = [
@@ -2461,12 +2480,41 @@ async function openAlbumPage(albumId, albumName) {
   }
 }
 
+// Извлекаем доминантный цвет из обложки альбома
+function extractAlbumColor(coverUrl) {
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = 8; canvas.height = 8;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, 8, 8);
+      const data = ctx.getImageData(0, 0, 8, 8).data;
+      let r = 0, g = 0, b = 0, count = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        // Пропускаем слишком тёмные и слишком светлые пиксели
+        const brightness = data[i] + data[i+1] + data[i+2];
+        if (brightness > 30 && brightness < 700) {
+          r += data[i]; g += data[i+1]; b += data[i+2]; count++;
+        }
+      }
+      if (count > 0) {
+        r = Math.round(r / count); g = Math.round(g / count); b = Math.round(b / count);
+        // Затемняем для фона
+        r = Math.round(r * 0.4); g = Math.round(g * 0.4); b = Math.round(b * 0.4);
+        document.getElementById('album-header').style.setProperty('--album-color', `rgb(${r},${g},${b})`);
+      }
+    } catch(e) {}
+  };
+  img.src = coverUrl;
+}
+
 function closeAlbumPage() {
   document.getElementById('album-page').classList.remove('open');
 }
 
 function goBackToArtist() {
-  // Если артист страница открыта — просто закрываем альбом
   const artistPage = document.getElementById('artist-page');
   if (artistPage.classList.contains('open')) {
     closeAlbumPage();
@@ -2480,22 +2528,38 @@ function goBackToArtist() {
 function renderAlbumTracks(trackList) {
   const list = document.getElementById('album-tracks-list');
   if (!trackList.length) { list.innerHTML = '<div style="color:#999;padding:20px">Треков не найдено</div>'; return; }
-  list.innerHTML = trackList.map((t, i) => `
-    <div class="album-track-item" id="album-track-${i}" onclick="playAlbumTrack(${i})">
-      <div class="album-track-num">${t.track_number || i + 1}</div>
+  list.innerHTML = trackList.map((t, i) => {
+    const isPlaying = currentSource === 'all' && tracks === currentAlbumTracks && currentIdx === i;
+    return `
+    <div class="album-track-item ${isPlaying ? 'playing' : ''}" id="album-track-${i}" onclick="playAlbumTrack(${i})">
+      <div class="album-track-num">${isPlaying ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="#1db954"><polygon points="5 3 19 12 5 21"/></svg>' : (t.track_number || i + 1)}</div>
       <div class="track-info">
         <div class="track-name">${t.name}</div>
-        <div class="track-meta">${t.dur || ''}</div>
+        <div class="track-meta">${t.artist || ''} · ${t.dur || ''}</div>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function playAlbumTrack(idx) {
   tracks = currentAlbumTracks;
   currentSource = 'all';
   playTrack(idx, 'all');
-  // Подсвечиваем
-  document.querySelectorAll('.album-track-item').forEach((el, i) => el.classList.toggle('playing', i === idx));
+}
+
+function updateAlbumTrackHighlight() {
+  const albumPage = document.getElementById('album-page');
+  if (!albumPage || !albumPage.classList.contains('open')) return;
+  document.querySelectorAll('.album-track-item').forEach((el, i) => {
+    const isPlaying = currentSource === 'all' && tracks === currentAlbumTracks && currentIdx === i;
+    el.classList.toggle('playing', isPlaying);
+    const numEl = el.querySelector('.album-track-num');
+    if (numEl) {
+      numEl.innerHTML = isPlaying
+        ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="#1db954"><polygon points="5 3 19 12 5 21"/></svg>'
+        : (currentAlbumTracks[i]?.track_number || i + 1);
+    }
+  });
 }
 
 function playAlbumAll() {
@@ -2509,8 +2573,10 @@ function playAlbumAll() {
 function playAlbumShuffle() {
   if (!currentAlbumTracks.length) return;
   tracks = [...currentAlbumTracks].sort(() => Math.random() - 0.5);
+  currentAlbumTracks = tracks;
   currentSource = 'all';
   playTrack(0, 'all');
+  renderAlbumTracks(currentAlbumTracks);
   showToast('🔀 Shuffle альбом');
 }
 
