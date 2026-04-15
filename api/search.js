@@ -272,9 +272,16 @@ export default async function handler(req, res) {
       const recIds = (await Promise.all(recNames.slice(0,6).map(findArtistId))).filter(Boolean);
       const trackGroups = await Promise.all(recIds.map(id => getTopTracks(id)));
       const seenT = new Set();
+      const artistCount = {};
       const result = trackGroups.flat()
         .sort(() => Math.random() - 0.5)
-        .filter(t => { if (seenT.has(t.id)) return false; seenT.add(t.id); return true; })
+        .filter(t => {
+          if (seenT.has(t.id)) return false;
+          seenT.add(t.id);
+          // Максимум 2 трека от одного артиста
+          artistCount[t.artist] = (artistCount[t.artist] || 0) + 1;
+          return artistCount[t.artist] <= 2;
+        })
         .slice(0, parseInt(limit));
       return res.status(200).json({ tracks: result });
     }
@@ -329,20 +336,37 @@ export default async function handler(req, res) {
       if (!track) return res.status(400).json({ error: 'Нет трека' });
       let targetId = null;
       if (track.startsWith('id:')) {
+        // Формат: id:ARTIST_ID|name
         targetId = track.slice(3).split('|')[0];
       } else {
-        targetId = await findArtistId(track.split(' - ')[0].trim());
+        // Формат: "Artist - Track"
+        const artistName = track.split(' - ')[0].trim();
+        // Сначала ищем артиста
+        const searchData = await spFetch('/search?q=' + encodeURIComponent(artistName) + '&type=artist&limit=1&market=US');
+        targetId = searchData.artists?.items?.[0]?.id || null;
       }
       if (!targetId) {
+        // Последний фолбэк — ищем как трек
         const fb = await spFetch('/search?q='+encodeURIComponent(track)+'&type=track&limit=10&market=US');
         return res.status(200).json({ tracks: (fb.tracks?.items||[]).map(mapTrack) });
       }
       const related = await getRelated(targetId);
-      const groups = await Promise.all(related.slice(0,4).map(a=>getTopTracks(a.id)));
+      if (!related.length) {
+        // Если нет related, ищем по жанрам артиста
+        const artistInfo = await getArtistInfo(targetId).catch(() => null);
+        if (artistInfo?.genres?.length) {
+          const genre = artistInfo.genres[0];
+          const genreSearch = await spFetch('/search?q=' + encodeURIComponent('genre:' + genre) + '&type=track&limit=' + limit + '&market=US');
+          return res.status(200).json({ tracks: (genreSearch.tracks?.items||[]).map(mapTrack) });
+        }
+        return res.status(200).json({ tracks: [] });
+      }
+      const groups = await Promise.all(related.slice(0,6).map(a=>getTopTracks(a.id)));
       const seen = new Set();
       return res.status(200).json({
         tracks: groups.flat()
           .filter(t=>{ if(seen.has(t.id)) return false; seen.add(t.id); return true; })
+          .sort(() => Math.random() - 0.5)
           .slice(0, parseInt(limit))
       });
     }
