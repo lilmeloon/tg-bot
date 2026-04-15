@@ -131,7 +131,7 @@
   .empty p { font-size: 14px; line-height: 1.6; color: #555; }
 
   /* ── MINI PLAYER ── */
-  .player { position: fixed; bottom: var(--nav-h); left: 0; right: 0; height: var(--player-h); background: #111; border-top: var(--border); padding: 10px 16px 6px; display: none; flex-direction: column; gap: 6px; z-index: 100; cursor: pointer; transition: transform 0.25s ease, opacity 0.25s ease; }
+  .player { position: fixed; bottom: var(--nav-h); left: 0; right: 0; height: var(--player-h); background: #111; border-top: var(--border); padding: 10px 16px 6px; display: none; flex-direction: column; gap: 6px; z-index: 100; cursor: pointer; }
   .player.visible { display: flex; }
   .player-top { display: flex; align-items: center; gap: 12px; }
   .player-cover { width: 42px; height: 42px; border-radius: 10px; flex-shrink: 0; overflow: hidden; background: #222; pointer-events: none; }
@@ -200,7 +200,7 @@
   .dl-spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #333; border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  .nav { position: fixed; bottom: 0; left: 0; right: 0; height: var(--nav-h); background: #111; border-top: var(--border); display: flex; align-items: center; z-index: 100; padding-bottom: env(safe-area-inset-bottom); transition: transform 0.25s ease, opacity 0.25s ease; }
+  .nav { position: fixed; bottom: 0; left: 0; right: 0; height: var(--nav-h); background: #111; border-top: var(--border); display: flex; align-items: center; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
   .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; color: #444; padding: 8px 0; background: none; border: none; transition: color 0.15s; }
   .nav-item.active { color: #fff; }
   .nav-item span { font-size: 10px; font-weight: 600; letter-spacing: 0.3px; }
@@ -1029,69 +1029,61 @@ async function loadRecAlbums(force = false) {
     setCachedRecs('albums', albums);
     renderRecAlbums(albums);
   } catch(e) {
-    // Фолбэк — ищем альбомы через related артистов
+    // Фолбэк — собираем альбомы из related треков
     try {
-      const fallbackAlbums = [];
       const ids = seedIds2.length ? seedIds2.slice(0, 3) : [];
+      const fallbackAlbums = [];
+      const seenAlbumIds = new Set();
+      const seenArtists = new Set();
+
       if (ids.length) {
         const promises = ids.map(id =>
-          fetch(`/api/search?action=related&track=${encodeURIComponent('id:' + id + '|artist')}&limit=6`)
+          fetch(`/api/search?action=related&track=${encodeURIComponent('id:' + id + '|artist')}&limit=8`)
             .then(r => r.json()).catch(() => ({ tracks: [] }))
         );
         const results = await Promise.all(promises);
-        const seenAlbums = new Set();
-        for (const data of results) {
-          for (const t of (data.tracks || [])) {
-            if (t.album_id && !seenAlbums.has(t.album_id)) {
-              seenAlbums.add(t.album_id);
+        for (const d of results) {
+          for (const t of (d.tracks || [])) {
+            if (t.album_id && !seenAlbumIds.has(t.album_id) && !seenArtists.has(t.artist)) {
+              seenAlbumIds.add(t.album_id);
+              seenArtists.add(t.artist);
               fallbackAlbums.push({
-                id: t.album_id,
-                name: t.album,
-                artist: t.artist,
-                artist_id: t.artist_id,
-                cover: t.cover,
-                year: '',
-                total_tracks: 0,
+                id: t.album_id, name: t.album,
+                artist: t.artist, artist_id: t.artist_id,
+                cover: t.cover, year: '', total_tracks: 0,
               });
             }
           }
         }
       }
-      // Также пробуем из истории
+
+      // Ещё фолбэк — поиск альбомов артистов из истории
       if (!fallbackAlbums.length && historyArtists.length) {
         const shuffled = [...historyArtists].sort(() => Math.random() - 0.5).slice(0, 3);
         const promises = shuffled.map(name =>
-          fetch(`/api/search?q=${encodeURIComponent(name + ' album')}&action=search`)
+          fetch(`/api/search?q=${encodeURIComponent(name)}&action=search`)
             .then(r => r.json()).catch(() => ({ tracks: [] }))
         );
         const results = await Promise.all(promises);
-        const seenAlbums = new Set();
-        for (const data of results) {
-          for (const t of (data.tracks || [])) {
-            if (t.album_id && !seenAlbums.has(t.album_id)) {
-              seenAlbums.add(t.album_id);
+        for (const d of results) {
+          for (const t of (d.tracks || [])) {
+            if (t.album_id && !seenAlbumIds.has(t.album_id) && !seenArtists.has(t.artist)) {
+              seenAlbumIds.add(t.album_id);
+              seenArtists.add(t.artist);
               fallbackAlbums.push({
-                id: t.album_id,
-                name: t.album,
-                artist: t.artist,
-                artist_id: t.artist_id,
-                cover: t.cover,
-                year: '',
-                total_tracks: 0,
+                id: t.album_id, name: t.album,
+                artist: t.artist, artist_id: t.artist_id,
+                cover: t.cover, year: '', total_tracks: 0,
               });
             }
           }
         }
       }
+
       if (fallbackAlbums.length) {
-        // Убираем дубликаты артистов
-        const artistSeen = {};
-        const diversified = fallbackAlbums.filter(a => {
-          artistSeen[a.artist] = (artistSeen[a.artist] || 0) + 1;
-          return artistSeen[a.artist] <= 1;
-        });
-        setCachedRecs('albums', diversified.slice(0, 6));
-        renderRecAlbums(diversified.slice(0, 6));
+        const sliced = fallbackAlbums.slice(0, 6);
+        setCachedRecs('albums', sliced);
+        renderRecAlbums(sliced);
         return;
       }
     } catch(_) {}
@@ -1162,7 +1154,7 @@ async function loadAiRecs(force = false) {
     const res = await fetch(`/api/search?action=ai_recommend&${params}&limit=12`);
     const data = await res.json();
     if (data.tracks && data.tracks.length > 0) {
-      // Фильтруем: максимум 2 трека от одного артиста для разнообразия
+      // Фильтруем: макс 2 трека от одного артиста + убираем из истории
       const artistCount = {};
       const diversified = data.tracks.filter(t => {
         artistCount[t.artist] = (artistCount[t.artist] || 0) + 1;
@@ -1176,19 +1168,19 @@ async function loadAiRecs(force = false) {
     }
     throw new Error('empty');
   } catch(e) {
+    // Фолбэк — related по seed артистам
     try {
-      if (historyArtists.length) {
-        // Берём до 3 разных артистов из истории для разнообразия
-        const shuffled = [...historyArtists].sort(() => Math.random() - 0.5).slice(0, 3);
-        const promises = shuffled.map(name =>
-          fetch(`/api/search?q=${encodeURIComponent(name)}`).then(r => r.json()).catch(() => ({ tracks: [] }))
+      if (seedIds.length) {
+        const relPromises = seedIds.slice(0, 3).map(id =>
+          fetch(`/api/search?action=related&track=${encodeURIComponent('id:' + id + '|artist')}&limit=8`)
+            .then(r => r.json()).catch(() => ({ tracks: [] }))
         );
-        const results = await Promise.all(promises);
+        const results = await Promise.all(relPromises);
         const seen = new Set();
         const artistCount = {};
         const fallback = [];
-        for (const data2 of results) {
-          for (const t of (data2.tracks || [])) {
+        for (const d of results) {
+          for (const t of (d.tracks || [])) {
             if (!seen.has(t.id) && !history.some(h => h.id === t.id)) {
               artistCount[t.artist] = (artistCount[t.artist] || 0) + 1;
               if (artistCount[t.artist] <= 2) {
@@ -1198,9 +1190,34 @@ async function loadAiRecs(force = false) {
             }
           }
         }
-        if (fallback.length) {
+        if (fallback.length >= 3) {
           fallback.sort(() => Math.random() - 0.5);
+          setCachedRecs('ai', fallback);
           renderHScroll('ai-recs-list', fallback);
+          return;
+        }
+      }
+      // Ещё фолбэк — поиск по артистам из истории
+      if (historyArtists.length) {
+        const shuffled = [...historyArtists].sort(() => Math.random() - 0.5).slice(0, 3);
+        const searchPromises = shuffled.map(name =>
+          fetch(`/api/search?q=${encodeURIComponent(name)}`).then(r => r.json()).catch(() => ({ tracks: [] }))
+        );
+        const results2 = await Promise.all(searchPromises);
+        const seen2 = new Set();
+        const ac2 = {};
+        const fallback2 = [];
+        for (const d of results2) {
+          for (const t of (d.tracks || [])) {
+            if (!seen2.has(t.id) && !history.some(h => h.id === t.id)) {
+              ac2[t.artist] = (ac2[t.artist] || 0) + 1;
+              if (ac2[t.artist] <= 2) { seen2.add(t.id); fallback2.push(t); }
+            }
+          }
+        }
+        if (fallback2.length) {
+          fallback2.sort(() => Math.random() - 0.5);
+          renderHScroll('ai-recs-list', fallback2);
           return;
         }
       }
@@ -1231,13 +1248,12 @@ async function loadRelated(force = false) {
 
   container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Ищу похожее...</div>';
   try {
-    // Пробуем related по seed артистам
-    const seedArtistId = seedIds.length ? seedIds[0] : null;
+    // Используем related action напрямую по каждому seed артисту
+    const ids = seedIds.length ? seedIds.slice(0, 3) : [];
     let relatedTracks = [];
 
-    if (seedArtistId) {
-      // Берём related для каждого seed артиста
-      const promises = seedIds.slice(0, 3).map(id =>
+    if (ids.length) {
+      const promises = ids.map(id =>
         fetch(`/api/search?action=related&track=${encodeURIComponent('id:' + id + '|artist')}&limit=8`)
           .then(r => r.json()).catch(() => ({ tracks: [] }))
       );
@@ -1257,7 +1273,7 @@ async function loadRelated(force = false) {
       }
     }
 
-    // Фолбэк через обычный поиск если related пустой
+    // Фолбэк через поиск по артистам из истории
     if (!relatedTracks.length && historyArtists.length) {
       const shuffled = [...historyArtists].sort(() => Math.random() - 0.5).slice(0, 3);
       const promises = shuffled.map(name =>
@@ -1277,19 +1293,19 @@ async function loadRelated(force = false) {
     }
 
     if (relatedTracks.length > 0) {
-      // Перемешиваем
       relatedTracks.sort(() => Math.random() - 0.5);
-      setCachedRecs('related', relatedTracks.slice(0, 15));
-      renderHScroll('related-list', relatedTracks.slice(0, 15));
+      const sliced = relatedTracks.slice(0, 15);
+      setCachedRecs('related', sliced);
+      renderHScroll('related-list', sliced);
       return;
     }
     throw new Error('empty');
   } catch(e) {
-    // Последний фолбэк — related по последнему артисту из истории
+    // Последний фолбэк
     try {
       const lastTrack = history[0];
-      if (lastTrack) {
-        const res2 = await fetch(`/api/search?action=related&track=${encodeURIComponent(lastTrack.artist + ' - ' + lastTrack.name)}&limit=12`);
+      if (lastTrack && lastTrack.artist_id) {
+        const res2 = await fetch(`/api/search?action=related&track=${encodeURIComponent('id:' + lastTrack.artist_id + '|' + lastTrack.artist)}&limit=12`);
         const data2 = await res2.json();
         if (data2.tracks?.length) { renderHScroll('related-list', data2.tracks); return; }
       }
@@ -2576,57 +2592,33 @@ async function doSearchWithArtists(query) {
 
 // ── FIX: скрываем мини-плеер и nav когда открыта клавиатура (iOS) ──
 (function fixPlayerKeyboard() {
-  const player = document.getElementById('player') || document.querySelector('.player');
+  const player = document.getElementById('player');
   const nav = document.querySelector('.nav');
   const content = document.querySelector('.content');
   if (!player) return;
 
-  let baseHeight = window.innerHeight;
-  let keyboardVisible = false;
+  let baseHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+  let isKbOpen = false;
 
-  function checkKeyboard() {
+  function onResize() {
     const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-    const isOpen = vh < baseHeight * 0.75;
-    if (isOpen !== keyboardVisible) {
-      keyboardVisible = isOpen;
-      if (isOpen) {
-        player.style.transform = 'translateY(100%)';
-        player.style.opacity = '0';
-        player.style.pointerEvents = 'none';
-        if (nav) {
-          nav.style.transform = 'translateY(100%)';
-          nav.style.opacity = '0';
-          nav.style.pointerEvents = 'none';
-        }
-        if (content) content.style.paddingBottom = '8px';
-      } else {
-        player.style.transform = '';
-        player.style.opacity = '';
-        player.style.pointerEvents = '';
-        if (nav) {
-          nav.style.transform = '';
-          nav.style.opacity = '';
-          nav.style.pointerEvents = '';
-        }
-        if (content) content.style.paddingBottom = '';
-        baseHeight = window.innerHeight;
-      }
-    }
-  }
+    const opened = vh < baseHeight * 0.78;
 
-  if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', checkKeyboard);
-    window.visualViewport.addEventListener('scroll', checkKeyboard);
-  }
-  // Fallback for older iOS
-  window.addEventListener('focusin', (e) => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-      setTimeout(checkKeyboard, 300);
-    }
-  });
-  window.addEventListener('focusout', () => {
-    setTimeout(() => {
-      keyboardVisible = false;
+    if (opened && !isKbOpen) {
+      isKbOpen = true;
+      player.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
+      player.style.transform = 'translateY(200px)';
+      player.style.opacity = '0';
+      player.style.pointerEvents = 'none';
+      if (nav) {
+        nav.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
+        nav.style.transform = 'translateY(200px)';
+        nav.style.opacity = '0';
+        nav.style.pointerEvents = 'none';
+      }
+      if (content) content.style.paddingBottom = '12px';
+    } else if (!opened && isKbOpen) {
+      isKbOpen = false;
       player.style.transform = '';
       player.style.opacity = '';
       player.style.pointerEvents = '';
@@ -2636,7 +2628,34 @@ async function doSearchWithArtists(query) {
         nav.style.pointerEvents = '';
       }
       if (content) content.style.paddingBottom = '';
-    }, 100);
+      baseHeight = vh;
+    }
+  }
+
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', onResize);
+  }
+
+  // Фолбэк для Telegram WebApp на iOS
+  document.addEventListener('focusin', (e) => {
+    if (e.target.matches('input, textarea')) {
+      setTimeout(onResize, 350);
+      setTimeout(onResize, 600);
+    }
+  });
+  document.addEventListener('focusout', () => {
+    setTimeout(() => {
+      isKbOpen = false;
+      player.style.transform = '';
+      player.style.opacity = '';
+      player.style.pointerEvents = '';
+      if (nav) {
+        nav.style.transform = '';
+        nav.style.opacity = '';
+        nav.style.pointerEvents = '';
+      }
+      if (content) content.style.paddingBottom = '';
+    }, 150);
   });
 })();
 
