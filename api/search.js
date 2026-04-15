@@ -59,25 +59,23 @@ export default async function handler(req, res) {
   }
 
   async function getTopTracks(id) {
-    let d = await spFetch('/artists/' + id + '/top-tracks?market=US');
-    if (!d.tracks?.length) d = await spFetch('/artists/' + id + '/top-tracks?market=RU');
-    if (!d.tracks?.length) d = await spFetch('/artists/' + id + '/top-tracks?market=KZ');
-    if (!d.tracks?.length) d = await spFetch('/artists/' + id + '/top-tracks?market=GB');
-    // Фолбэк через поиск
-    if (!d.tracks?.length) {
-      try {
-        const info = await spFetch('/artists/' + id);
-        if (info.name) {
-          const s = await spFetch('/search?q=' + encodeURIComponent(info.name) + '&type=track&limit=5&market=US');
-          if (!s.tracks?.items?.length) {
-            const s2 = await spFetch('/search?q=' + encodeURIComponent(info.name) + '&type=track&limit=5&market=RU');
-            return (s2.tracks?.items || []).slice(0, 3).map(mapTrack);
-          }
-          return (s.tracks?.items || []).slice(0, 3).map(mapTrack);
-        }
-      } catch(e) {}
-    }
-    return (d.tracks || []).slice(0, 3).map(mapTrack);
+    // Параллельно пробуем US и RU — берём первый непустой
+    const [dUS, dRU] = await Promise.all([
+      spFetch('/artists/' + id + '/top-tracks?market=US'),
+      spFetch('/artists/' + id + '/top-tracks?market=RU'),
+    ]);
+    const d = dUS.tracks?.length ? dUS : dRU.tracks?.length ? dRU : null;
+    if (d) return (d.tracks || []).slice(0, 3).map(mapTrack);
+
+    // Фолбэк через поиск по artist ID
+    try {
+      const info = await spFetch('/artists/' + id);
+      if (info.name) {
+        const s = await spFetch('/search?q=' + encodeURIComponent('artist:"' + info.name + '"') + '&type=track&limit=5&market=RU');
+        if (s.tracks?.items?.length) return s.tracks.items.slice(0, 3).map(mapTrack);
+      }
+    } catch(e) {}
+    return [];
   }
 
   async function getRelated(id) {
@@ -91,8 +89,14 @@ export default async function handler(req, res) {
   }
 
   async function findArtistId(name) {
-    const d = await spFetch('/search?q=' + encodeURIComponent(name) + '&type=artist&limit=1&market=US');
-    return d.artists?.items?.[0]?.id || null;
+    // Используем точный поиск с кавычками
+    const d = await spFetch('/search?q=' + encodeURIComponent('artist:"' + name + '"') + '&type=artist&limit=5&market=US');
+    const items = d.artists?.items || [];
+    // Ищем точное совпадение имени (case insensitive)
+    const exact = items.find(a => a.name.toLowerCase() === name.toLowerCase());
+    if (exact) return exact.id;
+    // Иначе берём самого популярного
+    return items[0]?.id || null;
   }
 
   // ── GEMINI — контентная фильтрация ──
@@ -147,34 +151,25 @@ export default async function handler(req, res) {
     // ── СТРАНИЦА АРТИСТА ──
     if (action === 'artist') {
       if (!artist_id) return res.status(400).json({ error: 'Нет artist_id' });
-      const [artistData, albumsData] = await Promise.all([
+
+      // ВСЁ параллельно: инфо + топ треки (2 market) + альбомы (2 market)
+      const [artistData, topUS, topRU, albumsUS, albumsRU] = await Promise.all([
         spFetch('/artists/' + artist_id),
+        spFetch('/artists/' + artist_id + '/top-tracks?market=US'),
+        spFetch('/artists/' + artist_id + '/top-tracks?market=RU'),
         spFetch('/artists/' + artist_id + '/albums?market=US&limit=20&include_groups=album,single,appears_on'),
+        spFetch('/artists/' + artist_id + '/albums?market=RU&limit=20&include_groups=album,single,appears_on'),
       ]);
 
-      // Топ треки — пробуем несколько рынков
-      let topData = await spFetch('/artists/' + artist_id + '/top-tracks?market=US');
-      if (!topData.tracks?.length) topData = await spFetch('/artists/' + artist_id + '/top-tracks?market=RU');
-      if (!topData.tracks?.length) topData = await spFetch('/artists/' + artist_id + '/top-tracks?market=KZ');
-      if (!topData.tracks?.length) topData = await spFetch('/artists/' + artist_id + '/top-tracks?market=GB');
+      let topTracks = topUS.tracks?.length ? topUS.tracks : topRU.tracks?.length ? topRU.tracks : [];
 
-      // Фолбэк — ищем треки артиста через search если top-tracks пустой
-      if (!topData.tracks?.length && artistData.name) {
-        const searchFallback = await spFetch('/search?q=' + encodeURIComponent('artist:' + artistData.name) + '&type=track&limit=10&market=US');
-        if (!searchFallback.tracks?.items?.length) {
-          const searchFallback2 = await spFetch('/search?q=' + encodeURIComponent(artistData.name) + '&type=track&limit=10&market=RU');
-          topData = { tracks: searchFallback2.tracks?.items || [] };
-        } else {
-          topData = { tracks: searchFallback.tracks.items };
-        }
+      // Фолбэк — ищем треки через search
+      if (!topTracks.length && artistData.name) {
+        const sf = await spFetch('/search?q=' + encodeURIComponent('artist:"' + artistData.name + '"') + '&type=track&limit=10&market=RU');
+        topTracks = sf.tracks?.items || [];
       }
 
-      // Альбомы — тоже пробуем с другим market если пусто
-      let albumItems = albumsData.items || [];
-      if (!albumItems.length) {
-        const albumsFallback = await spFetch('/artists/' + artist_id + '/albums?market=RU&limit=20&include_groups=album,single,appears_on');
-        albumItems = albumsFallback.items || [];
-      }
+      let albumItems = albumsUS.items?.length ? albumsUS.items : albumsRU.items || [];
 
       const artist = {
         id: artistData.id, name: artistData.name,
@@ -182,10 +177,13 @@ export default async function handler(req, res) {
         genres: artistData.genres?.slice(0, 3) || [],
         followers: artistData.followers?.total || 0,
       };
-      const topTracks = (topData.tracks || []).slice(0, 10).map(mapTrack);
+      const mappedTop = topTracks.slice(0, 10).map(mapTrack);
+      // Фильтруем топ треки — только от этого артиста
+      const filteredTop = mappedTop.filter(t => t.artist_id === artist_id || t.artist.toLowerCase() === artistData.name?.toLowerCase());
       const allAlbums = albumItems.map(mapAlbum);
       return res.status(200).json({
-        artist, topTracks,
+        artist,
+        topTracks: filteredTop.length ? filteredTop : mappedTop,
         albums: allAlbums.filter(a => a.type === 'album'),
         singles: allAlbums.filter(a => a.type === 'single').slice(0, 8),
         appearances: allAlbums.filter(a => a.type === 'compilation' || (a.type !== 'album' && a.type !== 'single')).slice(0, 6),
@@ -215,9 +213,8 @@ export default async function handler(req, res) {
       return res.status(200).json({ album, tracks });
     }
 
-    // ── ВОЛНА — контентная фильтрация через Claude + Spotify ──
+    // ── ВОЛНА — быстрый старт ──
     if (action === 'wave') {
-      // Получаем seed IDs (точные) или имена
       let seedIds = [];
       if (artist_ids) {
         seedIds = artist_ids.split(',').map(s => s.trim()).filter(Boolean).slice(0, 6);
@@ -225,57 +222,60 @@ export default async function handler(req, res) {
         const names = artists.split(',').slice(0, 6).map(s => s.trim());
         seedIds = (await Promise.all(names.map(findArtistId))).filter(Boolean);
       }
-
       if (!seedIds.length) return res.status(400).json({ error: 'Нет артистов' });
 
-      // Получаем инфо об артистах (жанры) для Claude
-      const artistInfos = await Promise.all(seedIds.slice(0, 4).map(id => getArtistInfo(id).catch(() => null)));
-      const artistsDesc = artistInfos
-        .filter(Boolean)
-        .map(a => `${a.name} (${(a.genres || []).slice(0,2).join(', ') || 'музыка'})`)
-        .join(', ');
-
-      // Claude подбирает похожих артистов по контенту
-      let claudeNames = [];
-      try {
-        claudeNames = await aiRecommend(artistsDesc, 'wave');
-      } catch(e) {}
-
-      // Фолбэк — Spotify related если Claude не ответил
-      if (!claudeNames.length) {
-        const relGroups = await Promise.all(seedIds.slice(0, 3).map(id => getRelated(id)));
-        const seenF = new Set(seedIds);
-        for (const group of relGroups) {
-          for (const a of group) {
-            if (!seenF.has(a.id) && claudeNames.length < 8) {
-              seenF.add(a.id);
-              claudeNames.push(a.name);
-            }
-          }
-        }
-      }
-
-      // Ищем ID рекомендованных артистов параллельно
-      const recIds = (await Promise.all(claudeNames.slice(0, 8).map(findArtistId))).filter(Boolean);
-
-      // Берём треки: seed (familiar) + recommended (discovery) параллельно
-      const [famTracks, recTracks] = await Promise.all([
+      // ПАРАЛЛЕЛЬНО: знакомые треки + Gemini рекомендации + Spotify related
+      const [famTracks, aiResult, relResult] = await Promise.all([
+        // 1. Знакомые треки (сразу начинаем)
         Promise.all(seedIds.slice(0, 3).map(id => getTopTracks(id))),
-        Promise.all(recIds.slice(0, 8).map(id => getTopTracks(id))),
+        // 2. Gemini рекомендации
+        (async () => {
+          try {
+            const infos = await Promise.all(seedIds.slice(0, 3).map(id => getArtistInfo(id).catch(() => null)));
+            const desc = infos.filter(Boolean).map(a => `${a.name} (${(a.genres || []).slice(0,2).join(', ') || 'музыка'})`).join(', ');
+            const names = await aiRecommend(desc, 'wave');
+            if (!names.length) return [];
+            const ids = (await Promise.all(names.slice(0, 6).map(findArtistId))).filter(Boolean);
+            return (await Promise.all(ids.map(id => getTopTracks(id)))).flat();
+          } catch(e) { return []; }
+        })(),
+        // 3. Spotify related (быстрый фолбэк)
+        (async () => {
+          try {
+            const rels = await Promise.all(seedIds.slice(0, 2).map(id => getRelated(id)));
+            const seen = new Set(seedIds);
+            const relIds = [];
+            for (const group of rels) {
+              for (const a of group) {
+                if (!seen.has(a.id) && relIds.length < 6) { seen.add(a.id); relIds.push(a.id); }
+              }
+            }
+            return (await Promise.all(relIds.slice(0, 4).map(id => getTopTracks(id)))).flat();
+          } catch(e) { return []; }
+        })(),
       ]);
 
+      // Собираем: AI рекомендации > Spotify related > знакомые
+      const recTracks = aiResult.length ? aiResult : relResult;
       const seen = new Set();
+      const artistCount = {};
       let waveTracks = [
-        ...recTracks.flat().map(t => ({ ...t, _layer: 'discovery' })),
+        ...recTracks.map(t => ({ ...t, _layer: 'discovery' })),
         ...famTracks.flat().map(t => ({ ...t, _layer: 'familiar' })),
-      ].filter(t => { if (seen.has(t.id)) return false; seen.add(t.id); return true; })
+      ].filter(t => {
+        if (seen.has(t.id)) return false;
+        seen.add(t.id);
+        const key = t.artist_id || t.artist;
+        artistCount[key] = (artistCount[key] || 0) + 1;
+        return artistCount[key] <= 3;
+      })
        .sort(() => Math.random() - 0.5)
        .slice(0, parseInt(limit));
 
       return res.status(200).json({ tracks: waveTracks });
     }
 
-    // ── AI РЕКОМЕНДАЦИИ — контентная фильтрация ──
+    // ── AI РЕКОМЕНДАЦИИ — быстрые ──
     if (action === 'ai_recommend') {
       let seedIds = [];
       if (artist_ids) {
@@ -286,42 +286,51 @@ export default async function handler(req, res) {
       }
       if (!seedIds.length) return res.status(200).json({ tracks: [] });
 
-      // Получаем жанры для точного анализа
-      const infos = await Promise.all(seedIds.slice(0, 4).map(id => getArtistInfo(id).catch(() => null)));
-      const desc = infos.filter(Boolean)
-        .map(a => `${a.name} (${(a.genres||[]).slice(0,2).join(', ')||'музыка'})`)
-        .join(', ');
+      // ПАРАЛЛЕЛЬНО: Gemini + Spotify related
+      const [aiTracks, relTracks] = await Promise.all([
+        // Gemini путь
+        (async () => {
+          try {
+            const infos = await Promise.all(seedIds.slice(0, 3).map(id => getArtistInfo(id).catch(() => null)));
+            const desc = infos.filter(Boolean).map(a => `${a.name} (${(a.genres||[]).slice(0,2).join(', ')||'музыка'})`).join(', ');
+            const recNames = await aiRecommend(desc, 'discovery');
+            if (!recNames.length) return [];
+            const recIds = (await Promise.all(recNames.slice(0,6).map(findArtistId))).filter(Boolean);
+            return (await Promise.all(recIds.map(id => getTopTracks(id)))).flat();
+          } catch(e) { return []; }
+        })(),
+        // Spotify related путь (быстрый фолбэк)
+        (async () => {
+          try {
+            const rg = await Promise.all(seedIds.slice(0,2).map(id => getRelated(id)));
+            const sf = new Set(seedIds);
+            const relIds = [];
+            for (const g of rg) for (const a of g) {
+              if (!sf.has(a.id) && relIds.length < 4) { sf.add(a.id); relIds.push(a.id); }
+            }
+            return (await Promise.all(relIds.map(id => getTopTracks(id)))).flat();
+          } catch(e) { return []; }
+        })(),
+      ]);
 
-      // Claude подбирает открытия
-      let recNames = [];
-      try { recNames = await aiRecommend(desc, 'discovery'); } catch(e) {}
-
-      // Фолбэк
-      if (!recNames.length) {
-        const rg = await Promise.all(seedIds.slice(0,2).map(id => getRelated(id)));
-        const sf = new Set(seedIds);
-        for (const g of rg) for (const a of g) {
-          if (!sf.has(a.id) && recNames.length < 6) { sf.add(a.id); recNames.push(a.name); }
-        }
-      }
-
-      const recIds = (await Promise.all(recNames.slice(0,6).map(findArtistId))).filter(Boolean);
-      const trackGroups = await Promise.all(recIds.map(id => getTopTracks(id)));
+      // Предпочитаем Gemini, фолбэк на related
+      const allTracks = aiTracks.length >= 3 ? aiTracks : [...aiTracks, ...relTracks];
       const seenT = new Set();
       const artistCount = {};
-      const result = trackGroups.flat()
+      const result = allTracks
         .sort(() => Math.random() - 0.5)
         .filter(t => {
           if (seenT.has(t.id)) return false;
           seenT.add(t.id);
-          artistCount[t.artist] = (artistCount[t.artist] || 0) + 1;
-          return artistCount[t.artist] <= 2;
+          const key = t.artist_id || t.artist;
+          artistCount[key] = (artistCount[key] || 0) + 1;
+          return artistCount[key] <= 2;
         })
         .slice(0, parseInt(limit));
       return res.status(200).json({ tracks: result });
     }
 
-    // ── РЕКОМЕНДОВАННЫЕ АЛЬБОМЫ ──
+    // ── РЕКОМЕНДОВАННЫЕ АЛЬБОМЫ — быстрые ──
     if (action === 'rec_albums') {
       let seedIds = [];
       if (artist_ids) {
@@ -332,26 +341,38 @@ export default async function handler(req, res) {
       }
       if (!seedIds.length) return res.status(200).json({ albums: [] });
 
-      const infos = await Promise.all(seedIds.slice(0,3).map(id => getArtistInfo(id).catch(()=>null)));
-      const desc = infos.filter(Boolean)
-        .map(a => `${a.name} (${(a.genres||[]).slice(0,2).join(', ')||'музыка'})`)
-        .join(', ');
+      // ПАРАЛЛЕЛЬНО: Gemini + related для альбомов
+      const [aiIds, relIds] = await Promise.all([
+        (async () => {
+          try {
+            const infos = await Promise.all(seedIds.slice(0,3).map(id => getArtistInfo(id).catch(()=>null)));
+            const desc = infos.filter(Boolean).map(a => `${a.name} (${(a.genres||[]).slice(0,2).join(', ')||'музыка'})`).join(', ');
+            const recNames = await aiRecommend(desc, 'discovery');
+            return (await Promise.all(recNames.slice(0,6).map(findArtistId))).filter(Boolean);
+          } catch(e) { return []; }
+        })(),
+        (async () => {
+          try {
+            const rg = await Promise.all(seedIds.slice(0,2).map(id=>getRelated(id)));
+            const sf = new Set(seedIds);
+            const ids = [];
+            for (const g of rg) for (const a of g) {
+              if (!sf.has(a.id) && ids.length < 4) { sf.add(a.id); ids.push(a.id); }
+            }
+            return ids;
+          } catch(e) { return []; }
+        })(),
+      ]);
 
-      let recNames = [];
-      try { recNames = await aiRecommend(desc, 'discovery'); } catch(e) {}
-      if (!recNames.length) {
-        const rg = await Promise.all(seedIds.slice(0,2).map(id=>getRelated(id)));
-        const sf = new Set(seedIds);
-        for (const g of rg) for (const a of g) {
-          if (!sf.has(a.id) && recNames.length < 6) { sf.add(a.id); recNames.push(a.name); }
-        }
-      }
-
-      const recIds = (await Promise.all(recNames.slice(0,6).map(findArtistId))).filter(Boolean);
-      const albumResults = await Promise.all(recIds.map(async id => {
+      const allIds = aiIds.length >= 3 ? aiIds : [...new Set([...aiIds, ...relIds])];
+      const albumResults = await Promise.all(allIds.slice(0, 6).map(async id => {
         try {
-          const d = await spFetch('/artists/' + id + '/albums?market=US&limit=3&include_groups=album');
-          const album = d.items?.[0];
+          const [dUS, dRU] = await Promise.all([
+            spFetch('/artists/' + id + '/albums?market=US&limit=3&include_groups=album'),
+            spFetch('/artists/' + id + '/albums?market=RU&limit=3&include_groups=album'),
+          ]);
+          const items = dUS.items?.length ? dUS.items : dRU.items || [];
+          const album = items[0];
           if (!album) return null;
           return {
             id: album.id, name: album.name,
@@ -363,7 +384,15 @@ export default async function handler(req, res) {
           };
         } catch { return null; }
       }));
-      return res.status(200).json({ albums: albumResults.filter(Boolean) });
+
+      // Фильтруем дубли по артисту
+      const seenArtists = new Set();
+      const filtered = albumResults.filter(a => {
+        if (!a || seenArtists.has(a.artist_id)) return false;
+        seenArtists.add(a.artist_id);
+        return true;
+      });
+      return res.status(200).json({ albums: filtered });
     }
 
     // ── ПОХОЖИЕ ТРЕКИ ──
