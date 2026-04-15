@@ -674,9 +674,14 @@
       <div class="albums-grid" id="artist-albums-grid"></div>
     </div>
 
-    <div class="artist-section" id="artist-singles-section" style="padding-bottom:100px;">
+    <div class="artist-section" id="artist-singles-section" style="padding-bottom:8px;">
       <div class="artist-section-title">Синглы</div>
       <div class="h-scroll" id="artist-singles-list"></div>
+    </div>
+
+    <div class="artist-section" id="artist-appearances-section" style="padding-bottom:100px;">
+      <div class="artist-section-title">Участие</div>
+      <div class="h-scroll" id="artist-appearances-list"></div>
     </div>
   </div>
 </div>
@@ -996,22 +1001,27 @@ async function playMix(mixId) {
 async function loadRecAlbums(force = false) {
   const container = document.getElementById('rec-albums-list');
   if (!container) return;
-  const historyArtists = [...new Set(history.slice(0, 15).map(t => t.artist))];
-  if (!historyArtists.length) {
-    container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Слушай музыку чтобы появились рекомендации</div>';
-    return;
-  }
+
+  // Дневной кэш
   if (!force) {
     const cached = getCachedRecs('albums');
     if (cached && cached.length) { renderRecAlbums(cached); return; }
   }
+
+  // Собираем seed: онбординг + история + лайки
+  const seedIds2 = getSeedIds();
+  const historyArtists = [...new Set(history.slice(0, 15).map(t => t.artist))];
+
+  if (!seedIds2.length && !historyArtists.length) {
+    container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Слушай музыку чтобы появились рекомендации</div>';
+    return;
+  }
+
   container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Подбираю альбомы...</div>';
   try {
-    // Просим Claude подобрать альбомы
-    const seedIds2 = getSeedIds();
     const albumParams = seedIds2.length
       ? 'artist_ids=' + encodeURIComponent(seedIds2.join(','))
-      : 'artists=' + encodeURIComponent(historyArtists.slice(0,8).join(','));
+      : 'artists=' + encodeURIComponent(historyArtists.slice(0, 8).join(','));
     const res = await fetch('/api/search?action=rec_albums&' + albumParams);
     const data = await res.json();
     const albums = data.albums || [];
@@ -1019,17 +1029,24 @@ async function loadRecAlbums(force = false) {
       container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Ничего не найдено</div>';
       return;
     }
-    container.innerHTML = albums.map(a => `
-      <div class="rec-album-card" onclick="openAlbumPage('${a.id}','${escapeAttr(a.name)}')">
-        <div class="rec-album-cover">
-          ${a.cover ? `<img src="${a.cover}" loading="lazy">` : '<div style="width:100%;height:100%;background:#111;"></div>'}
-        </div>
-        <div class="rec-album-name">${a.name}</div>
-        <div class="rec-album-artist">${a.artist || ''} · ${a.year || ''}</div>
-      </div>`).join('');
+    setCachedRecs('albums', albums);
+    renderRecAlbums(albums);
   } catch(e) {
     container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Ошибка загрузки</div>';
   }
+}
+
+function renderRecAlbums(albums) {
+  const container = document.getElementById('rec-albums-list');
+  if (!container) return;
+  container.innerHTML = albums.map(a => `
+    <div class="rec-album-card" onclick="openAlbumPage('${a.id}','${escapeAttr(a.name)}')">
+      <div class="rec-album-cover">
+        ${a.cover ? `<img src="${a.cover}" loading="lazy">` : '<div style="width:100%;height:100%;background:#111;"></div>'}
+      </div>
+      <div class="rec-album-name">${a.name}</div>
+      <div class="rec-album-artist">${a.artist || ''} · ${a.year || ''}</div>
+    </div>`).join('');
 }
 
 
@@ -1059,73 +1076,98 @@ function getSeedIds() {
 async function loadAiRecs(force = false) {
   const container = document.getElementById('ai-recs-list');
   if (!container) return;
-  const historyArtists = [...new Set(history.slice(0, 15).map(t => t.artist))];
-  if (!historyArtists.length) {
-    container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Слушай музыку чтобы появились рекомендации</div>';
-    return;
-  }
+
   // Дневной кэш
   if (!force) {
     const cached = getCachedRecs('ai');
     if (cached && cached.length) { renderHScroll('ai-recs-list', cached); return; }
   }
-  container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Подбираю...</div>';
+
+  const seedIds = getSeedIds();
+  const historyArtists = [...new Set(history.slice(0, 15).map(t => t.artist))];
+
+  if (!seedIds.length && !historyArtists.length) {
+    container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Слушай музыку чтобы появились рекомендации</div>';
+    return;
+  }
+
+  container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Подбираю открытия...</div>';
   try {
-    const seedIds = getSeedIds();
     const params = seedIds.length
       ? `artist_ids=${encodeURIComponent(seedIds.join(','))}`
-      : `artists=${encodeURIComponent(historyArtists.join(','))}`;
+      : `artists=${encodeURIComponent(historyArtists.slice(0, 6).join(','))}`;
     const res = await fetch(`/api/search?action=ai_recommend&${params}&limit=12`);
     const data = await res.json();
     if (data.tracks && data.tracks.length > 0) {
-      setCachedRecs('ai', data.tracks);
-      renderHScroll('ai-recs-list', data.tracks);
+      const fresh = data.tracks.filter(t => !history.some(h => h.id === t.id));
+      const result = fresh.length >= 3 ? fresh : data.tracks;
+      setCachedRecs('ai', result);
+      renderHScroll('ai-recs-list', result);
       return;
     }
     throw new Error('empty');
   } catch(e) {
-    // Фолбэк — ищем напрямую по артисту из истории
     try {
-      const pick = historyArtists[Math.floor(Math.random() * Math.min(3, historyArtists.length))];
-      const res2 = await fetch(`/api/search?q=${encodeURIComponent(pick)}`);
-      const data2 = await res2.json();
-      const fallback = (data2.tracks || []).filter(t => !history.some(h => h.id === t.id));
-      if (fallback.length) { renderHScroll('ai-recs-list', fallback); return; }
+      if (historyArtists.length) {
+        const pick = historyArtists[Math.floor(Math.random() * Math.min(3, historyArtists.length))];
+        const res2 = await fetch(`/api/search?q=${encodeURIComponent(pick)}`);
+        const data2 = await res2.json();
+        const fallback = (data2.tracks || []).filter(t => !history.some(h => h.id === t.id));
+        if (fallback.length) { renderHScroll('ai-recs-list', fallback); return; }
+      }
     } catch(_) {}
     container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Нажми «Обновить»</div>';
   }
 }
 
-// ── ПОХОЖИЕ ТРЕКИ ──
+// ── ПОХОЖИЕ ТРЕКИ ── (на основе любимых артистов, не последнего трека)
 async function loadRelated(force = false) {
   const container = document.getElementById('related-list');
   if (!container) return;
-  const lastTrack = history[0];
-  if (!lastTrack) {
-    container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Слушай музыку чтобы появились рекомендации</div>';
-    return;
-  }
+
+  // Дневной кэш
   if (!force) {
     const cached = getCachedRecs('related');
     if (cached && cached.length) { renderHScroll('related-list', cached); return; }
   }
+
+  // Берём seed артистов: онбординг + история + избранное
+  const seedIds = getSeedIds();
+  const historyArtists = [...new Set(history.slice(0, 10).map(t => t.artist))];
+
+  if (!seedIds.length && !historyArtists.length) {
+    container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Слушай музыку чтобы появились рекомендации</div>';
+    return;
+  }
+
   container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Ищу похожее...</div>';
   try {
-    const res = await fetch(`/api/search?action=related&track=${encodeURIComponent(lastTrack.artist + ' - ' + lastTrack.name)}&limit=12`);
+    // Используем wave action — он возвращает mix familiar + discovery треков
+    const params = seedIds.length
+      ? `artist_ids=${encodeURIComponent(seedIds.join(','))}`
+      : `artists=${encodeURIComponent(historyArtists.slice(0, 5).join(','))}`;
+    const res = await fetch(`/api/search?action=wave&${params}&limit=15`);
     const data = await res.json();
     if (data.tracks && data.tracks.length > 0) {
-      setCachedRecs('related', data.tracks);
-      renderHScroll('related-list', data.tracks);
+      // Перемешиваем и берём только discovery (новые) треки
+      const discoveryFirst = [
+        ...data.tracks.filter(t => t._layer === 'discovery'),
+        ...data.tracks.filter(t => t._layer !== 'discovery'),
+      ];
+      setCachedRecs('related', discoveryFirst);
+      renderHScroll('related-list', discoveryFirst);
       return;
     }
     throw new Error('empty');
   } catch(e) {
-    // Фолбэк — ищем по артисту напрямую
+    // Фолбэк — related по последнему артисту из истории
     try {
-      const res2 = await fetch(`/api/search?q=${encodeURIComponent(lastTrack.artist)}`);
-      const data2 = await res2.json();
-      const fallback = (data2.tracks || []).filter(t => t.id !== lastTrack.id);
-      if (fallback.length) { renderHScroll('related-list', fallback); return; }
+      const lastTrack = history[0];
+      if (lastTrack) {
+        const res2 = await fetch(`/api/search?action=related&track=${encodeURIComponent(lastTrack.artist + ' - ' + lastTrack.name)}&limit=12`);
+        const data2 = await res2.json();
+        if (data2.tracks?.length) { renderHScroll('related-list', data2.tracks); return; }
+      }
     } catch(_) {}
     container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Нажми «Обновить»</div>';
   }
@@ -2145,6 +2187,10 @@ async function openArtistPage(artistId, artistName) {
     renderArtistSingles(data.singles || []);
     document.getElementById('artist-singles-section').style.display = (data.singles?.length) ? 'block' : 'none';
 
+    // Участие у других артистов
+    renderArtistAppearances(data.appearances || []);
+    document.getElementById('artist-appearances-section').style.display = (data.appearances?.length) ? 'block' : 'none';
+
   } catch (e) {
     document.getElementById('artist-top-tracks').innerHTML = '<div style="color:#999;padding:20px">Ошибка загрузки</div>';
   }
@@ -2212,6 +2258,20 @@ function renderArtistSingles(singles) {
   const container = document.getElementById('artist-singles-list');
   if (!singles.length) { container.innerHTML = ''; return; }
   container.innerHTML = singles.map(a => `
+    <div class="h-card" onclick="openAlbumPage('${a.id}', '${escapeAttr(a.name)}')">
+      <div class="h-card-cover">
+        ${a.cover ? `<img src="${a.cover}" loading="lazy" style="width:100%;height:100%;object-fit:cover;">` : '<div style="width:100%;height:100%;background:#111;"></div>'}
+      </div>
+      <div class="h-card-name">${a.name}</div>
+      <div class="h-card-artist">${a.year}</div>
+    </div>`).join('');
+}
+
+function renderArtistAppearances(appearances) {
+  const container = document.getElementById('artist-appearances-list');
+  if (!container) return;
+  if (!appearances.length) { container.innerHTML = ''; return; }
+  container.innerHTML = appearances.map(a => `
     <div class="h-card" onclick="openAlbumPage('${a.id}', '${escapeAttr(a.name)}')">
       <div class="h-card-cover">
         ${a.cover ? `<img src="${a.cover}" loading="lazy" style="width:100%;height:100%;object-fit:cover;">` : '<div style="width:100%;height:100%;background:#111;"></div>'}
@@ -2388,6 +2448,21 @@ async function doSearchWithArtists(query) {
   }
 }
 
+
+// ── FIX: скрываем мини-плеер когда открыта клавиатура ──
+(function fixPlayerKeyboard() {
+  const player = document.getElementById('player') || document.querySelector('.player');
+  if (!player) return;
+  if (window.visualViewport) {
+    let lastHeight = window.visualViewport.height;
+    window.visualViewport.addEventListener('resize', () => {
+      const currentHeight = window.visualViewport.height;
+      const keyboardOpen = currentHeight < lastHeight * 0.85;
+      player.style.display = keyboardOpen ? 'none' : '';
+      if (!keyboardOpen) lastHeight = currentHeight;
+    });
+  }
+})();
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
