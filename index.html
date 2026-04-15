@@ -131,7 +131,7 @@
   .empty p { font-size: 14px; line-height: 1.6; color: #555; }
 
   /* ── MINI PLAYER ── */
-  .player { position: fixed; bottom: var(--nav-h); left: 0; right: 0; height: var(--player-h); background: #111; border-top: var(--border); padding: 10px 16px 6px; display: none; flex-direction: column; gap: 6px; z-index: 100; cursor: pointer; }
+  .player { position: fixed; bottom: var(--nav-h); left: 0; right: 0; height: var(--player-h); background: #111; border-top: var(--border); padding: 10px 16px 6px; display: none; flex-direction: column; gap: 6px; z-index: 100; cursor: pointer; transition: transform 0.25s ease, opacity 0.25s ease; }
   .player.visible { display: flex; }
   .player-top { display: flex; align-items: center; gap: 12px; }
   .player-cover { width: 42px; height: 42px; border-radius: 10px; flex-shrink: 0; overflow: hidden; background: #222; pointer-events: none; }
@@ -200,7 +200,7 @@
   .dl-spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #333; border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  .nav { position: fixed; bottom: 0; left: 0; right: 0; height: var(--nav-h); background: #111; border-top: var(--border); display: flex; align-items: center; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
+  .nav { position: fixed; bottom: 0; left: 0; right: 0; height: var(--nav-h); background: #111; border-top: var(--border); display: flex; align-items: center; z-index: 100; padding-bottom: env(safe-area-inset-bottom); transition: transform 0.25s ease, opacity 0.25s ease; }
   .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; color: #444; padding: 8px 0; background: none; border: none; transition: color 0.15s; }
   .nav-item.active { color: #fff; }
   .nav-item span { font-size: 10px; font-weight: 600; letter-spacing: 0.3px; }
@@ -1025,14 +1025,77 @@ async function loadRecAlbums(force = false) {
     const res = await fetch('/api/search?action=rec_albums&' + albumParams);
     const data = await res.json();
     const albums = data.albums || [];
-    if (!albums.length) {
-      container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Ничего не найдено</div>';
-      return;
-    }
+    if (!albums.length) throw new Error('empty');
     setCachedRecs('albums', albums);
     renderRecAlbums(albums);
   } catch(e) {
-    container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Ошибка загрузки</div>';
+    // Фолбэк — ищем альбомы через related артистов
+    try {
+      const fallbackAlbums = [];
+      const ids = seedIds2.length ? seedIds2.slice(0, 3) : [];
+      if (ids.length) {
+        const promises = ids.map(id =>
+          fetch(`/api/search?action=related&track=${encodeURIComponent('id:' + id + '|artist')}&limit=6`)
+            .then(r => r.json()).catch(() => ({ tracks: [] }))
+        );
+        const results = await Promise.all(promises);
+        const seenAlbums = new Set();
+        for (const data of results) {
+          for (const t of (data.tracks || [])) {
+            if (t.album_id && !seenAlbums.has(t.album_id)) {
+              seenAlbums.add(t.album_id);
+              fallbackAlbums.push({
+                id: t.album_id,
+                name: t.album,
+                artist: t.artist,
+                artist_id: t.artist_id,
+                cover: t.cover,
+                year: '',
+                total_tracks: 0,
+              });
+            }
+          }
+        }
+      }
+      // Также пробуем из истории
+      if (!fallbackAlbums.length && historyArtists.length) {
+        const shuffled = [...historyArtists].sort(() => Math.random() - 0.5).slice(0, 3);
+        const promises = shuffled.map(name =>
+          fetch(`/api/search?q=${encodeURIComponent(name + ' album')}&action=search`)
+            .then(r => r.json()).catch(() => ({ tracks: [] }))
+        );
+        const results = await Promise.all(promises);
+        const seenAlbums = new Set();
+        for (const data of results) {
+          for (const t of (data.tracks || [])) {
+            if (t.album_id && !seenAlbums.has(t.album_id)) {
+              seenAlbums.add(t.album_id);
+              fallbackAlbums.push({
+                id: t.album_id,
+                name: t.album,
+                artist: t.artist,
+                artist_id: t.artist_id,
+                cover: t.cover,
+                year: '',
+                total_tracks: 0,
+              });
+            }
+          }
+        }
+      }
+      if (fallbackAlbums.length) {
+        // Убираем дубликаты артистов
+        const artistSeen = {};
+        const diversified = fallbackAlbums.filter(a => {
+          artistSeen[a.artist] = (artistSeen[a.artist] || 0) + 1;
+          return artistSeen[a.artist] <= 1;
+        });
+        setCachedRecs('albums', diversified.slice(0, 6));
+        renderRecAlbums(diversified.slice(0, 6));
+        return;
+      }
+    } catch(_) {}
+    container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Нажми «Обновить»</div>';
   }
 }
 
@@ -1099,8 +1162,14 @@ async function loadAiRecs(force = false) {
     const res = await fetch(`/api/search?action=ai_recommend&${params}&limit=12`);
     const data = await res.json();
     if (data.tracks && data.tracks.length > 0) {
-      const fresh = data.tracks.filter(t => !history.some(h => h.id === t.id));
-      const result = fresh.length >= 3 ? fresh : data.tracks;
+      // Фильтруем: максимум 2 трека от одного артиста для разнообразия
+      const artistCount = {};
+      const diversified = data.tracks.filter(t => {
+        artistCount[t.artist] = (artistCount[t.artist] || 0) + 1;
+        return artistCount[t.artist] <= 2;
+      });
+      const fresh = diversified.filter(t => !history.some(h => h.id === t.id));
+      const result = fresh.length >= 3 ? fresh : diversified;
       setCachedRecs('ai', result);
       renderHScroll('ai-recs-list', result);
       return;
@@ -1109,11 +1178,31 @@ async function loadAiRecs(force = false) {
   } catch(e) {
     try {
       if (historyArtists.length) {
-        const pick = historyArtists[Math.floor(Math.random() * Math.min(3, historyArtists.length))];
-        const res2 = await fetch(`/api/search?q=${encodeURIComponent(pick)}`);
-        const data2 = await res2.json();
-        const fallback = (data2.tracks || []).filter(t => !history.some(h => h.id === t.id));
-        if (fallback.length) { renderHScroll('ai-recs-list', fallback); return; }
+        // Берём до 3 разных артистов из истории для разнообразия
+        const shuffled = [...historyArtists].sort(() => Math.random() - 0.5).slice(0, 3);
+        const promises = shuffled.map(name =>
+          fetch(`/api/search?q=${encodeURIComponent(name)}`).then(r => r.json()).catch(() => ({ tracks: [] }))
+        );
+        const results = await Promise.all(promises);
+        const seen = new Set();
+        const artistCount = {};
+        const fallback = [];
+        for (const data2 of results) {
+          for (const t of (data2.tracks || [])) {
+            if (!seen.has(t.id) && !history.some(h => h.id === t.id)) {
+              artistCount[t.artist] = (artistCount[t.artist] || 0) + 1;
+              if (artistCount[t.artist] <= 2) {
+                seen.add(t.id);
+                fallback.push(t);
+              }
+            }
+          }
+        }
+        if (fallback.length) {
+          fallback.sort(() => Math.random() - 0.5);
+          renderHScroll('ai-recs-list', fallback);
+          return;
+        }
       }
     } catch(_) {}
     container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Нажми «Обновить»</div>';
@@ -1142,25 +1231,61 @@ async function loadRelated(force = false) {
 
   container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Ищу похожее...</div>';
   try {
-    // Используем wave action — он возвращает mix familiar + discovery треков
-    const params = seedIds.length
-      ? `artist_ids=${encodeURIComponent(seedIds.join(','))}`
-      : `artists=${encodeURIComponent(historyArtists.slice(0, 5).join(','))}`;
-    const res = await fetch(`/api/search?action=wave&${params}&limit=15`);
-    const data = await res.json();
-    if (data.tracks && data.tracks.length > 0) {
-      // Перемешиваем и берём только discovery (новые) треки
-      const discoveryFirst = [
-        ...data.tracks.filter(t => t._layer === 'discovery'),
-        ...data.tracks.filter(t => t._layer !== 'discovery'),
-      ];
-      setCachedRecs('related', discoveryFirst);
-      renderHScroll('related-list', discoveryFirst);
+    // Пробуем related по seed артистам
+    const seedArtistId = seedIds.length ? seedIds[0] : null;
+    let relatedTracks = [];
+
+    if (seedArtistId) {
+      // Берём related для каждого seed артиста
+      const promises = seedIds.slice(0, 3).map(id =>
+        fetch(`/api/search?action=related&track=${encodeURIComponent('id:' + id + '|artist')}&limit=8`)
+          .then(r => r.json()).catch(() => ({ tracks: [] }))
+      );
+      const results = await Promise.all(promises);
+      const seen = new Set();
+      const artistCount = {};
+      for (const data of results) {
+        for (const t of (data.tracks || [])) {
+          if (!seen.has(t.id)) {
+            artistCount[t.artist] = (artistCount[t.artist] || 0) + 1;
+            if (artistCount[t.artist] <= 2) {
+              seen.add(t.id);
+              relatedTracks.push(t);
+            }
+          }
+        }
+      }
+    }
+
+    // Фолбэк через обычный поиск если related пустой
+    if (!relatedTracks.length && historyArtists.length) {
+      const shuffled = [...historyArtists].sort(() => Math.random() - 0.5).slice(0, 3);
+      const promises = shuffled.map(name =>
+        fetch(`/api/search?q=${encodeURIComponent(name)}&action=search`)
+          .then(r => r.json()).catch(() => ({ tracks: [] }))
+      );
+      const results = await Promise.all(promises);
+      const seen = new Set();
+      for (const data of results) {
+        for (const t of (data.tracks || [])) {
+          if (!seen.has(t.id) && !history.some(h => h.id === t.id)) {
+            seen.add(t.id);
+            relatedTracks.push(t);
+          }
+        }
+      }
+    }
+
+    if (relatedTracks.length > 0) {
+      // Перемешиваем
+      relatedTracks.sort(() => Math.random() - 0.5);
+      setCachedRecs('related', relatedTracks.slice(0, 15));
+      renderHScroll('related-list', relatedTracks.slice(0, 15));
       return;
     }
     throw new Error('empty');
   } catch(e) {
-    // Фолбэк — related по последнему артисту из истории
+    // Последний фолбэк — related по последнему артисту из истории
     try {
       const lastTrack = history[0];
       if (lastTrack) {
@@ -2449,19 +2574,70 @@ async function doSearchWithArtists(query) {
 }
 
 
-// ── FIX: скрываем мини-плеер когда открыта клавиатура ──
+// ── FIX: скрываем мини-плеер и nav когда открыта клавиатура (iOS) ──
 (function fixPlayerKeyboard() {
   const player = document.getElementById('player') || document.querySelector('.player');
+  const nav = document.querySelector('.nav');
+  const content = document.querySelector('.content');
   if (!player) return;
-  if (window.visualViewport) {
-    let lastHeight = window.visualViewport.height;
-    window.visualViewport.addEventListener('resize', () => {
-      const currentHeight = window.visualViewport.height;
-      const keyboardOpen = currentHeight < lastHeight * 0.85;
-      player.style.display = keyboardOpen ? 'none' : '';
-      if (!keyboardOpen) lastHeight = currentHeight;
-    });
+
+  let baseHeight = window.innerHeight;
+  let keyboardVisible = false;
+
+  function checkKeyboard() {
+    const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+    const isOpen = vh < baseHeight * 0.75;
+    if (isOpen !== keyboardVisible) {
+      keyboardVisible = isOpen;
+      if (isOpen) {
+        player.style.transform = 'translateY(100%)';
+        player.style.opacity = '0';
+        player.style.pointerEvents = 'none';
+        if (nav) {
+          nav.style.transform = 'translateY(100%)';
+          nav.style.opacity = '0';
+          nav.style.pointerEvents = 'none';
+        }
+        if (content) content.style.paddingBottom = '8px';
+      } else {
+        player.style.transform = '';
+        player.style.opacity = '';
+        player.style.pointerEvents = '';
+        if (nav) {
+          nav.style.transform = '';
+          nav.style.opacity = '';
+          nav.style.pointerEvents = '';
+        }
+        if (content) content.style.paddingBottom = '';
+        baseHeight = window.innerHeight;
+      }
+    }
   }
+
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', checkKeyboard);
+    window.visualViewport.addEventListener('scroll', checkKeyboard);
+  }
+  // Fallback for older iOS
+  window.addEventListener('focusin', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+      setTimeout(checkKeyboard, 300);
+    }
+  });
+  window.addEventListener('focusout', () => {
+    setTimeout(() => {
+      keyboardVisible = false;
+      player.style.transform = '';
+      player.style.opacity = '';
+      player.style.pointerEvents = '';
+      if (nav) {
+        nav.style.transform = '';
+        nav.style.opacity = '';
+        nav.style.pointerEvents = '';
+      }
+      if (content) content.style.paddingBottom = '';
+    }, 100);
+  });
 })();
 
 if ('serviceWorker' in navigator) {
