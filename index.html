@@ -19,7 +19,7 @@
     --bg: #0a0a0a; --bg2: #141414; --bg3: #1e1e1e; --bg4: #2a2a2a;
     --accent: #ffffff; --accent2: #cccccc;
     --text: #ffffff; --text2: #cccccc; --text3: #666666;
-    --radius: 12px; --player-h: 90px; --nav-h: 68px;
+    --radius: 12px; --player-h: 64px; --nav-h: 68px;
     --border: 1px solid #2a2a2a;
   }
   html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'Space Grotesk', sans-serif; font-size: 14px; -webkit-font-smoothing: antialiased; }
@@ -126,7 +126,7 @@
   .empty p { font-size: 14px; line-height: 1.6; color: #555; }
 
   /* ── MINI PLAYER ── */
-  .player { position: fixed; bottom: var(--nav-h); left: 0; right: 0; height: var(--player-h); background: #111; border-top: var(--border); padding: 10px 16px 6px; display: none; flex-direction: column; gap: 6px; z-index: 100; cursor: pointer; }
+  .player { position: fixed; bottom: var(--nav-h); left: 0; right: 0; height: var(--player-h); background: #111; border-top: var(--border); padding: 8px 16px 4px; display: none; flex-direction: column; gap: 4px; z-index: 100; cursor: pointer; }
   .player.visible { display: flex; }
   .player-top { display: flex; align-items: center; gap: 12px; }
   .player-cover { width: 42px; height: 42px; border-radius: 10px; flex-shrink: 0; overflow: hidden; background: #222; pointer-events: none; }
@@ -140,8 +140,9 @@
   .ctrl.play-btn { width: 38px; height: 38px; background: #fff; color: #000; border-radius: 50%; }
   .ctrl.play-btn:active { background: #ddd; }
   .player-bottom { display: flex; align-items: center; gap: 8px; pointer-events: none; }
-  .progress-bar { flex: 1; height: 3px; background: #2a2a2a; border-radius: 2px; cursor: pointer; position: relative; pointer-events: all; padding: 10px 0; background-clip: content-box; }
-  .progress-fill { height: 3px; background: #fff; border-radius: 2px; width: 0%; transition: width 0.3s linear; pointer-events: none; }
+  .progress-bar { flex: 1; height: 2px; background: #2a2a2a; border-radius: 2px; cursor: pointer; position: relative; pointer-events: all; }
+  .progress-bar::before { content: ''; position: absolute; inset: -12px 0; }
+  .progress-fill { height: 100%; background: #fff; border-radius: 2px; width: 0%; transition: width 0.3s linear; pointer-events: none; }
   .time-label { font-size: 10px; color: #444; white-space: nowrap; min-width: 60px; text-align: right; }
 
   /* ── FULLSCREEN PLAYER ── */
@@ -175,8 +176,9 @@
   .fs-fav.active { color: #fff; }
 
   .fs-progress { padding: 20px 28px 8px; flex-shrink: 0; }
-  .fs-bar { height: 4px; background: #2a2a2a; border-radius: 3px; cursor: pointer; position: relative; padding: 12px 0; background-clip: content-box; }
-  .fs-bar-fill { height: 4px; background: #fff; border-radius: 3px; width: 0%; transition: width 0.3s linear; pointer-events: none; }
+  .fs-bar { height: 3px; background: #2a2a2a; border-radius: 3px; cursor: pointer; position: relative; }
+  .fs-bar::before { content: ''; position: absolute; inset: -14px 0; }
+  .fs-bar-fill { height: 100%; background: #fff; border-radius: 3px; width: 0%; transition: width 0.3s linear; pointer-events: none; }
   .fs-times { display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px; color: #444; }
 
   .fs-controls { display: flex; align-items: center; justify-content: space-between; padding: 4px 24px 8px; flex-shrink: 0; }
@@ -244,54 +246,76 @@
   }
   .artist-page.open { transform: translateX(0); }
 
-  .artist-header { position: relative; flex-shrink: 0; height: 230px; overflow: hidden; background: #111; }
-  .artist-header-img { width: 100%; height: 100%; object-fit: cover; display: block; filter: brightness(0.5); }
-  .artist-header-gradient { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0,0,0,0.2) 30%, var(--bg) 100%); }
-  .artist-back { position: absolute; top: 16px; left: 16px; width: 36px; height: 36px; background: rgba(0,0,0,0.5); backdrop-filter: blur(8px); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #fff; border-radius: 50%; }
-  .artist-header-info { position: absolute; bottom: 16px; left: 20px; right: 20px; }
-  .artist-header-name { font-family: 'Bebas Neue', sans-serif; font-size: 36px; letter-spacing: 2px; color: #fff; text-shadow: 0 2px 12px rgba(0,0,0,0.8); line-height: 1; }
-  .artist-header-meta { font-size: 11px; color: rgba(255,255,255,0.55); letter-spacing: 1px; text-transform: uppercase; margin-top: 4px; font-weight: 600; }
+  .artist-header { position: relative; flex-shrink: 0; min-height: 280px; overflow: hidden; background: var(--artist-color, #111); display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding: 0 20px 20px; }
+  .artist-header-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+  .artist-header-gradient { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.3) 40%, var(--bg) 100%); }
+  .artist-back { position: absolute; top: 16px; left: 16px; width: 36px; height: 36px; background: rgba(0,0,0,0.5); backdrop-filter: blur(8px); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #fff; border-radius: 50%; z-index: 5; }
+  .artist-header-info { position: relative; z-index: 2; width: 100%; }
+  .artist-header-name { font-family: 'Bebas Neue', sans-serif; font-size: 42px; letter-spacing: 2px; color: #fff; text-shadow: 0 2px 20px rgba(0,0,0,0.8); line-height: 1; }
+  .artist-header-meta { font-size: 11px; color: rgba(255,255,255,0.55); letter-spacing: 1px; text-transform: uppercase; margin-top: 6px; font-weight: 600; }
 
-  .artist-body { flex: 1; overflow-y: auto; scrollbar-width: none; background: var(--bg); }
+  .artist-body { flex: 1; overflow-y: auto; scrollbar-width: none; background: var(--bg); padding-bottom: calc(var(--player-h) + var(--nav-h) + 20px); }
   .artist-body::-webkit-scrollbar { display: none; }
-  .artist-section { padding: 16px 16px 4px; }
-  .artist-section-title { font-size: 11px; font-weight: 700; letter-spacing: 2px; color: #555; text-transform: uppercase; margin-bottom: 12px; }
 
-  .artist-play-btn { display: flex; align-items: center; gap: 10px; background: #fff; color: #000; border: none; cursor: pointer; padding: 14px 20px; border-radius: 14px; font-size: 14px; font-weight: 700; margin: 12px 16px 4px; width: calc(100% - 32px); transition: opacity 0.15s; letter-spacing: 0.5px; }
-  .artist-play-btn:active { opacity: 0.8; }
+  .artist-actions { display: flex; align-items: center; gap: 12px; padding: 16px 16px 8px; }
+  .artist-play-btn { width: 48px; height: 48px; background: #fff; border: none; cursor: pointer; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: transform 0.15s; flex-shrink: 0; }
+  .artist-play-btn:active { transform: scale(0.92); }
+  .artist-shuffle-btn { background: none; border: none; color: #555; cursor: pointer; padding: 8px; }
+  .artist-shuffle-btn.active { color: #fff; }
 
-  /* ── АЛЬБОМЫ СЕТКА ── */
-  .albums-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .album-card { cursor: pointer; }
-  .album-card:active { opacity: 0.8; }
-  .album-card-cover { width: 100%; aspect-ratio: 1; overflow: hidden; border-radius: 12px; background: var(--bg3); margin-bottom: 8px; position: relative; }
-  .album-card-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .album-card-name { font-size: 13px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .album-card-meta { font-size: 11px; color: #555; margin-top: 2px; }
-  .album-type-badge { position: absolute; top: 6px; left: 6px; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); color: #fff; font-size: 9px; letter-spacing: 1px; text-transform: uppercase; padding: 3px 7px; font-weight: 700; border-radius: 6px; }
+  .artist-section { padding: 0 16px; margin-top: 16px; }
+  .artist-section-title { font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 12px; }
+
+  /* Топ треки артиста — нумерованный список */
+  .artist-track { display: flex; align-items: center; gap: 12px; padding: 8px 0; cursor: pointer; transition: background 0.1s; border-radius: 8px; }
+  .artist-track:active { background: rgba(255,255,255,0.05); }
+  .artist-track-num { width: 24px; text-align: center; font-size: 14px; color: #555; flex-shrink: 0; font-weight: 500; }
+  .artist-track-cover { width: 40px; height: 40px; border-radius: 4px; flex-shrink: 0; overflow: hidden; background: var(--bg3); }
+  .artist-track-cover img { width: 100%; height: 100%; object-fit: cover; }
+  .artist-track-info { flex: 1; min-width: 0; }
+  .artist-track-name { font-size: 14px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .artist-track-meta { font-size: 12px; color: #555; margin-top: 1px; }
+  .artist-track-dur { font-size: 12px; color: #444; flex-shrink: 0; }
+  .artist-track.playing .artist-track-num { color: #1db954; }
+  .artist-track.playing .artist-track-name { color: #1db954; }
+  .artist-tracks-more { background: none; border: none; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; padding: 10px 0; }
+
+  /* Табы музыки */
+  .artist-music-tabs { display: flex; gap: 8px; padding: 0 16px; margin-top: 16px; overflow-x: auto; scrollbar-width: none; }
+  .artist-music-tabs::-webkit-scrollbar { display: none; }
+  .artist-music-tab { padding: 8px 16px; border-radius: 20px; font-size: 12px; font-weight: 700; white-space: nowrap; cursor: pointer; border: 1px solid #333; color: #aaa; background: transparent; transition: all 0.15s; }
+  .artist-music-tab.active { background: #fff; color: #000; border-color: #fff; }
+  .artist-music-content { padding: 12px 16px 0; }
+  .artist-music-grid { display: flex; gap: 12px; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; }
+  .artist-music-grid::-webkit-scrollbar { display: none; }
 
   /* ── СТРАНИЦА АЛЬБОМА ── */
   .album-page { position: fixed; inset: 0; z-index: 160; background: var(--bg); transform: translateX(100%); transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1); display: flex; flex-direction: column; overflow: hidden; }
   .album-page.open { transform: translateX(0); }
-  .album-header { position: relative; display: flex; flex-direction: column; align-items: center; padding: 48px 20px 20px; flex-shrink: 0; background: linear-gradient(to bottom, var(--album-color, #1a1a1a) 0%, var(--bg) 100%); min-height: 220px; }
-  .album-header-cover { width: 160px; height: 160px; flex-shrink: 0; border-radius: 8px; overflow: hidden; background: var(--bg3); box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+  .album-header { position: relative; display: flex; flex-direction: column; align-items: center; padding: 40px 20px 14px; flex-shrink: 0; background: linear-gradient(to bottom, var(--album-color, #1a1a1a) 0%, var(--bg) 100%); }
+  .album-header-cover { width: 200px; height: 200px; flex-shrink: 0; border-radius: 6px; overflow: hidden; background: var(--bg3); box-shadow: 0 8px 30px rgba(0,0,0,0.6); }
   .album-header-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .album-header-info { width: 100%; text-align: center; margin-top: 16px; }
-  .album-header-back { position: absolute; top: 12px; left: 12px; width: 36px; height: 36px; background: rgba(0,0,0,0.4); backdrop-filter: blur(8px); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #fff; border-radius: 50%; z-index: 5; }
-  .album-header-title { font-size: 20px; font-weight: 700; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .album-header-artist { font-size: 13px; color: rgba(255,255,255,0.6); margin-top: 4px; cursor: pointer; font-weight: 600; }
-  .album-header-meta { font-size: 11px; color: rgba(255,255,255,0.35); margin-top: 4px; }
-  .album-play-row { display: flex; gap: 10px; padding: 12px 16px; flex-shrink: 0; }
-  .album-play-all { flex: 1; background: #fff; border: none; color: #000; cursor: pointer; padding: 12px 16px; border-radius: 12px; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; transition: opacity 0.15s; }
-  .album-play-all:active { opacity: 0.8; }
-  .album-shuffle-btn { background: var(--bg2); border: var(--border); color: #fff; cursor: pointer; padding: 12px 16px; border-radius: 12px; display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; transition: all 0.15s; }
-  .album-shuffle-btn:active { background: #fff; color: #000; }
+  .album-header-info { width: 100%; text-align: center; margin-top: 14px; }
+  .album-header-back { position: absolute; top: 10px; left: 12px; width: 32px; height: 32px; background: rgba(0,0,0,0.4); backdrop-filter: blur(8px); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #fff; border-radius: 50%; z-index: 5; }
+  .album-header-title { font-size: 18px; font-weight: 700; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .album-header-artist { font-size: 12px; color: rgba(255,255,255,0.55); margin-top: 3px; cursor: pointer; font-weight: 600; }
+  .album-header-meta { font-size: 11px; color: rgba(255,255,255,0.3); margin-top: 2px; }
+  .album-actions { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; flex-shrink: 0; }
+  .album-actions-left { display: flex; align-items: center; gap: 16px; }
+  .album-action-btn { background: none; border: none; color: #aaa; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; transition: color 0.15s; }
+  .album-action-btn:active { color: #fff; }
+  .album-action-btn.active { color: #fff; }
+  .album-actions-right { display: flex; align-items: center; gap: 10px; }
+  .album-shuffle-sm { background: none; border: none; color: #aaa; cursor: pointer; padding: 4px; }
+  .album-shuffle-sm:active { color: #fff; }
+  .album-play-circle { width: 48px; height: 48px; background: #fff; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.15s; }
+  .album-play-circle:active { transform: scale(0.92); }
   .album-tracks-list { flex: 1; overflow-y: auto; scrollbar-width: none; padding-bottom: calc(var(--player-h) + var(--nav-h) + 16px); }
   .album-tracks-list::-webkit-scrollbar { display: none; }
-  .album-track-item { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-radius: 10px; cursor: pointer; transition: background 0.1s; margin: 0 8px; }
+  .album-track-item { display: flex; align-items: center; gap: 12px; padding: 10px 16px; cursor: pointer; transition: background 0.1s; }
   .album-track-item:active { background: var(--bg2); }
-  .album-track-num { width: 24px; text-align: center; font-size: 13px; color: #444; flex-shrink: 0; font-weight: 600; }
-  .album-track-item.playing { background: rgba(255,255,255,0.08); }
+  .album-track-num { width: 20px; text-align: center; font-size: 13px; color: #444; flex-shrink: 0; font-weight: 600; }
+  .album-track-item.playing { background: rgba(255,255,255,0.05); }
   .album-track-item.playing .album-track-num { color: #1db954; }
   .album-track-item.playing .track-name { color: #1db954; }
   .album-track-item.playing .track-meta { color: #555; }
@@ -640,7 +664,7 @@
 
 <!-- СТРАНИЦА АРТИСТА -->
 <div class="artist-page" id="artist-page">
-  <div class="artist-header">
+  <div class="artist-header" id="artist-header">
     <img id="artist-page-img" class="artist-header-img" src="" alt="">
     <div class="artist-header-gradient"></div>
     <button class="artist-back" onclick="closeArtistPage()">
@@ -653,30 +677,31 @@
   </div>
 
   <div class="artist-body" id="artist-body">
-    <button class="artist-play-btn" onclick="playArtistTopTracks()">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-      Слушать топ треки
-    </button>
+    <div class="artist-actions">
+      <button class="artist-play-btn" onclick="playArtistTopTracks()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="#000"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+      </button>
+      <button class="artist-shuffle-btn" id="artist-shuffle-btn" onclick="shuffleArtistTopTracks()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
+      </button>
+    </div>
 
     <div class="artist-section">
-      <div class="artist-section-title">Топ треки</div>
-      <div class="track-list" id="artist-top-tracks"></div>
+      <div class="artist-section-title">Популярные треки</div>
+      <div id="artist-top-tracks"></div>
+      <button class="artist-tracks-more" id="artist-tracks-more" onclick="toggleArtistTracksMore()" style="display:none">Ещё</button>
     </div>
 
-    <div class="artist-section" id="artist-albums-section">
-      <div class="artist-section-title">Альбомы</div>
-      <div class="albums-grid" id="artist-albums-grid"></div>
+    <div class="artist-music-tabs" id="artist-music-tabs">
+      <button class="artist-music-tab active" onclick="switchArtistMusicTab('popular', this)">Популярные</button>
+      <button class="artist-music-tab" onclick="switchArtistMusicTab('albums', this)">Альбомы</button>
+      <button class="artist-music-tab" onclick="switchArtistMusicTab('singles', this)">Синглы и EP</button>
+    </div>
+    <div class="artist-music-content" id="artist-music-content">
+      <div class="artist-music-grid" id="artist-music-grid"></div>
     </div>
 
-    <div class="artist-section" id="artist-singles-section" style="padding-bottom:8px;">
-      <div class="artist-section-title">Синглы</div>
-      <div class="h-scroll" id="artist-singles-list"></div>
-    </div>
-
-    <div class="artist-section" id="artist-appearances-section" style="padding-bottom:100px;">
-      <div class="artist-section-title">Участие</div>
-      <div class="h-scroll" id="artist-appearances-list"></div>
-    </div>
+    <div style="height:40px;"></div>
   </div>
 </div>
 
@@ -696,15 +721,23 @@
     </div>
   </div>
 
-  <div class="album-play-row">
-    <button class="album-play-all" onclick="playAlbumAll()">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-      Слушать альбом
-    </button>
-    <button class="album-shuffle-btn" onclick="playAlbumShuffle()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
-      Shuffle
-    </button>
+  <div class="album-actions">
+    <div class="album-actions-left">
+      <button class="album-action-btn" id="album-fav-btn" onclick="toggleAlbumFav()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5l-1-1a5.5 5.5 0 00-7.78 7.78L12 21.23l8.78-8.78A5.5 5.5 0 0012 5z"/></svg>
+      </button>
+      <button class="album-action-btn" onclick="downloadAlbum()">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </button>
+    </div>
+    <div class="album-actions-right">
+      <button class="album-shuffle-sm" onclick="playAlbumShuffle()">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
+      </button>
+      <button class="album-play-circle" onclick="playAlbumAll()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="#000"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+      </button>
+    </div>
   </div>
 
   <div class="album-tracks-list" id="album-tracks-list"></div>
@@ -2303,16 +2336,19 @@ function showToast(msg) {
 // ── ARTIST PAGE ──
 let currentArtistData = null;
 let currentArtistTopTracks = [];
-let albumPageHistory = []; // для кнопки "назад" из альбома к артисту
+let artistShowAllTracks = false;
+let albumPageHistory = [];
 
 async function openArtistPage(artistId, artistName) {
   const page = document.getElementById('artist-page');
+  const header = document.getElementById('artist-header');
   document.getElementById('artist-page-name').textContent = artistName || '...';
   document.getElementById('artist-page-img').src = '';
   document.getElementById('artist-page-meta').textContent = '';
   document.getElementById('artist-top-tracks').innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Загружаю...</div>';
-  document.getElementById('artist-albums-grid').innerHTML = '';
-  document.getElementById('artist-singles-list').innerHTML = '';
+  document.getElementById('artist-music-grid').innerHTML = '';
+  header.style.setProperty('--artist-color', '#111');
+  artistShowAllTracks = false;
   page.classList.add('open');
 
   try {
@@ -2321,9 +2357,12 @@ async function openArtistPage(artistId, artistName) {
     currentArtistData = data;
     currentArtistTopTracks = data.topTracks || [];
 
-    // Фото
+    // Фото + извлекаем цвет для градиента
     const img = document.getElementById('artist-page-img');
-    if (data.artist?.cover) img.src = data.artist.cover;
+    if (data.artist?.cover) {
+      img.src = data.artist.cover;
+      extractArtistColor(data.artist.cover);
+    }
 
     // Мета
     const followers = data.artist?.followers ? formatFollowers(data.artist.followers) + ' слушателей' : '';
@@ -2333,21 +2372,40 @@ async function openArtistPage(artistId, artistName) {
     // Топ треки
     renderArtistTopTracks(data.topTracks || []);
 
-    // Альбомы
-    renderArtistAlbums(data.albums || [], 'artist-albums-grid');
-    document.getElementById('artist-albums-section').style.display = (data.albums?.length) ? 'block' : 'none';
-
-    // Синглы — горизонтальный скролл
-    renderArtistSingles(data.singles || []);
-    document.getElementById('artist-singles-section').style.display = (data.singles?.length) ? 'block' : 'none';
-
-    // Участие у других артистов
-    renderArtistAppearances(data.appearances || []);
-    document.getElementById('artist-appearances-section').style.display = (data.appearances?.length) ? 'block' : 'none';
+    // Музыка — показываем первый таб
+    switchArtistMusicTab('popular', document.querySelector('.artist-music-tab'));
 
   } catch (e) {
     document.getElementById('artist-top-tracks').innerHTML = '<div style="color:#999;padding:20px">Ошибка загрузки</div>';
   }
+}
+
+function extractArtistColor(coverUrl) {
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = 8; canvas.height = 8;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, 8, 8);
+      const data = ctx.getImageData(0, 0, 8, 8).data;
+      let r = 0, g = 0, b = 0, count = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        const brightness = data[i] + data[i+1] + data[i+2];
+        if (brightness > 30 && brightness < 700) {
+          r += data[i]; g += data[i+1]; b += data[i+2]; count++;
+        }
+      }
+      if (count > 0) {
+        r = Math.round(r / count * 0.5);
+        g = Math.round(g / count * 0.5);
+        b = Math.round(b / count * 0.5);
+        document.getElementById('artist-header').style.setProperty('--artist-color', `rgb(${r},${g},${b})`);
+      }
+    } catch(e) {}
+  };
+  img.src = coverUrl;
 }
 
 function closeArtistPage() {
@@ -2363,27 +2421,40 @@ function formatFollowers(n) {
 
 function renderArtistTopTracks(topTracks) {
   const list = document.getElementById('artist-top-tracks');
-  if (!topTracks.length) { list.innerHTML = '<div style="color:#999;font-size:13px;padding:12px 0">Нет треков</div>'; return; }
-  list.innerHTML = topTracks.map((t, i) => {
-    const coverHtml = t.cover ? `<img src="${t.cover}" loading="lazy">` : '<div class="cover-placeholder"></div>';
+  const moreBtn = document.getElementById('artist-tracks-more');
+  if (!topTracks.length) { list.innerHTML = '<div style="color:#999;font-size:13px;padding:12px 0">Нет треков</div>'; if(moreBtn) moreBtn.style.display='none'; return; }
+
+  const showCount = artistShowAllTracks ? topTracks.length : Math.min(5, topTracks.length);
+  list.innerHTML = topTracks.slice(0, showCount).map((t, i) => {
+    const isPlaying = currentSource === 'all' && tracks === currentArtistTopTracks && currentIdx === i;
     return `
-    <div class="track-item" onclick="playArtistTrack(${i})">
-      <div class="cover">${coverHtml}<div class="playing-indicator"><div class="bars"><div class="bar"></div><div class="bar"></div><div class="bar"></div></div></div></div>
-      <div class="track-info">
-        <div class="track-name">${t.name}</div>
-        <div class="track-meta">${t.album || ''}</div>
+    <div class="artist-track ${isPlaying ? 'playing' : ''}" onclick="playArtistTrack(${i})">
+      <div class="artist-track-num">${isPlaying ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="#1db954"><polygon points="5 3 19 12 5 21"/></svg>' : (i + 1)}</div>
+      <div class="artist-track-cover">${t.cover ? `<img src="${t.cover}" loading="lazy">` : '<div style="width:100%;height:100%;background:#1e1e1e"></div>'}</div>
+      <div class="artist-track-info">
+        <div class="artist-track-name">${t.name}</div>
+        <div class="artist-track-meta">${t.album || ''}</div>
       </div>
-      <div class="track-actions">
-        <div class="track-dur">${t.dur || ''}</div>
-      </div>
+      <div class="artist-track-dur">${t.dur || ''}</div>
     </div>`;
   }).join('');
+
+  if (moreBtn) {
+    moreBtn.style.display = topTracks.length > 5 ? 'block' : 'none';
+    moreBtn.textContent = artistShowAllTracks ? 'Свернуть' : 'Ещё';
+  }
+}
+
+function toggleArtistTracksMore() {
+  artistShowAllTracks = !artistShowAllTracks;
+  renderArtistTopTracks(currentArtistTopTracks);
 }
 
 function playArtistTrack(idx) {
   tracks = currentArtistTopTracks;
   currentSource = 'all';
   playTrack(idx, 'all');
+  renderArtistTopTracks(currentArtistTopTracks);
 }
 
 function playArtistTopTracks() {
@@ -2391,47 +2462,46 @@ function playArtistTopTracks() {
   tracks = currentArtistTopTracks;
   currentSource = 'all';
   playTrack(0, 'all');
-  showToast('▶ Топ треки артиста');
+  renderArtistTopTracks(currentArtistTopTracks);
 }
 
-function renderArtistAlbums(albums, containerId) {
-  const grid = document.getElementById(containerId);
-  if (!albums.length) { grid.innerHTML = ''; return; }
-  grid.innerHTML = albums.map(a => `
-    <div class="album-card" onclick="openAlbumPage('${a.id}', '${escapeAttr(a.name)}')">
-      <div class="album-card-cover">
-        ${a.cover ? `<img src="${a.cover}" loading="lazy">` : '<div style="width:100%;height:100%;background:#111;"></div>'}
-        <div class="album-type-badge">${a.type === 'single' ? 'Single' : 'Album'}</div>
-      </div>
-      <div class="album-card-name">${a.name}</div>
-      <div class="album-card-meta">${a.year}${a.total_tracks ? ' · ' + a.total_tracks + ' тр.' : ''}</div>
-    </div>`).join('');
+function shuffleArtistTopTracks() {
+  if (!currentArtistTopTracks.length) return;
+  tracks = [...currentArtistTopTracks].sort(() => Math.random() - 0.5);
+  currentSource = 'all';
+  playTrack(0, 'all');
+  showToast('🔀 Shuffle');
 }
 
-function renderArtistSingles(singles) {
-  const container = document.getElementById('artist-singles-list');
-  if (!singles.length) { container.innerHTML = ''; return; }
-  container.innerHTML = singles.map(a => `
-    <div class="h-card" onclick="openAlbumPage('${a.id}', '${escapeAttr(a.name)}')">
-      <div class="h-card-cover">
+function switchArtistMusicTab(tab, el) {
+  document.querySelectorAll('.artist-music-tab').forEach(t => t.classList.remove('active'));
+  if (el) el.classList.add('active');
+
+  const grid = document.getElementById('artist-music-grid');
+  if (!currentArtistData) return;
+
+  let items = [];
+  if (tab === 'popular') {
+    // Все альбомы + синглы по популярности
+    items = [...(currentArtistData.albums || []), ...(currentArtistData.singles || [])];
+  } else if (tab === 'albums') {
+    items = currentArtistData.albums || [];
+  } else if (tab === 'singles') {
+    items = currentArtistData.singles || [];
+  }
+
+  if (!items.length) {
+    grid.innerHTML = '<div style="color:#555;font-size:13px;padding:12px 0">Ничего не найдено</div>';
+    return;
+  }
+
+  grid.innerHTML = items.map(a => `
+    <div class="h-card" onclick="openAlbumPage('${a.id}', '${escapeAttr(a.name)}')" style="width:140px;">
+      <div class="h-card-cover" style="width:140px;height:140px;">
         ${a.cover ? `<img src="${a.cover}" loading="lazy" style="width:100%;height:100%;object-fit:cover;">` : '<div style="width:100%;height:100%;background:#111;"></div>'}
       </div>
       <div class="h-card-name">${a.name}</div>
-      <div class="h-card-artist">${a.year}</div>
-    </div>`).join('');
-}
-
-function renderArtistAppearances(appearances) {
-  const container = document.getElementById('artist-appearances-list');
-  if (!container) return;
-  if (!appearances.length) { container.innerHTML = ''; return; }
-  container.innerHTML = appearances.map(a => `
-    <div class="h-card" onclick="openAlbumPage('${a.id}', '${escapeAttr(a.name)}')">
-      <div class="h-card-cover">
-        ${a.cover ? `<img src="${a.cover}" loading="lazy" style="width:100%;height:100%;object-fit:cover;">` : '<div style="width:100%;height:100%;background:#111;"></div>'}
-      </div>
-      <div class="h-card-name">${a.name}</div>
-      <div class="h-card-artist">${a.year}</div>
+      <div class="h-card-artist">${a.year || ''}${a.type ? ' · ' + (a.type === 'single' ? 'Сингл' : 'Альбом') : ''}</div>
     </div>`).join('');
 }
 
@@ -2475,6 +2545,13 @@ async function openAlbumPage(albumId, albumName) {
     ].filter(Boolean).join(' · ');
 
     renderAlbumTracks(currentAlbumTracks);
+    // Обновляем кнопку избранного
+    const favBtn = document.getElementById('album-fav-btn');
+    if (favBtn && currentAlbumTracks.length) {
+      const allFaved = currentAlbumTracks.every(t => favorites.some(f => f.id === t.id));
+      favBtn.classList.toggle('active', allFaved);
+      favBtn.querySelector('svg')?.setAttribute('fill', allFaved ? 'currentColor' : 'none');
+    }
   } catch (e) {
     document.getElementById('album-tracks-list').innerHTML = '<div style="color:#999;padding:20px">Ошибка загрузки</div>';
   }
@@ -2577,7 +2654,53 @@ function playAlbumShuffle() {
   currentSource = 'all';
   playTrack(0, 'all');
   renderAlbumTracks(currentAlbumTracks);
-  showToast('🔀 Shuffle альбом');
+  showToast('🔀 Shuffle');
+}
+
+// Избранное для альбома — сохраняем все треки в избранное
+function toggleAlbumFav() {
+  if (!currentAlbumTracks.length) return;
+  const btn = document.getElementById('album-fav-btn');
+  const allFaved = currentAlbumTracks.every(t => favorites.some(f => f.id === t.id));
+  if (allFaved) {
+    // Убираем все треки альбома из избранного
+    currentAlbumTracks.forEach(t => {
+      const idx = favorites.findIndex(f => f.id === t.id);
+      if (idx !== -1) favorites.splice(idx, 1);
+    });
+    if (btn) { btn.classList.remove('active'); btn.querySelector('svg').setAttribute('fill', 'none'); }
+    showToast('Удалено из избранного');
+  } else {
+    // Добавляем все треки альбома
+    currentAlbumTracks.forEach(t => {
+      if (!favorites.some(f => f.id === t.id)) favorites.push(t);
+    });
+    if (btn) { btn.classList.add('active'); btn.querySelector('svg').setAttribute('fill', 'currentColor'); }
+    showToast('Альбом добавлен в избранное');
+  }
+  localStorage.setItem('favs', JSON.stringify(favorites));
+}
+
+// Скачать весь альбом
+async function downloadAlbum() {
+  if (!currentAlbumTracks.length) return;
+  const toDownload = currentAlbumTracks.filter(t => !downloaded.has(t.id));
+  if (!toDownload.length) { showToast('Все треки уже скачаны ✓'); return; }
+  showToast(`⏳ Скачиваю ${toDownload.length} треков...`);
+  let done = 0;
+  for (const t of toDownload) {
+    try {
+      const url = `${RAILWAY_URL}/stream?artist=${encodeURIComponent(t.artist)}&name=${encodeURIComponent(t.name)}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const buffer = await res.arrayBuffer();
+        const saved = await opfsSave(t.id, buffer);
+        if (saved) markDownloaded(t);
+        done++;
+      }
+    } catch(e) {}
+  }
+  showToast(`Скачано ${done}/${toDownload.length} треков ✓`);
 }
 
 // ── Клик на имя артиста в треке → открыть страницу ──
