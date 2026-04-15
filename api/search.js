@@ -60,11 +60,22 @@ export default async function handler(req, res) {
 
   async function getTopTracks(id) {
     let d = await spFetch('/artists/' + id + '/top-tracks?market=US');
+    if (!d.tracks?.length) d = await spFetch('/artists/' + id + '/top-tracks?market=RU');
+    if (!d.tracks?.length) d = await spFetch('/artists/' + id + '/top-tracks?market=KZ');
+    if (!d.tracks?.length) d = await spFetch('/artists/' + id + '/top-tracks?market=GB');
+    // Фолбэк через поиск
     if (!d.tracks?.length) {
-      d = await spFetch('/artists/' + id + '/top-tracks?market=RU');
-    }
-    if (!d.tracks?.length) {
-      d = await spFetch('/artists/' + id + '/top-tracks?market=KZ');
+      try {
+        const info = await spFetch('/artists/' + id);
+        if (info.name) {
+          const s = await spFetch('/search?q=' + encodeURIComponent(info.name) + '&type=track&limit=5&market=US');
+          if (!s.tracks?.items?.length) {
+            const s2 = await spFetch('/search?q=' + encodeURIComponent(info.name) + '&type=track&limit=5&market=RU');
+            return (s2.tracks?.items || []).slice(0, 3).map(mapTrack);
+          }
+          return (s.tracks?.items || []).slice(0, 3).map(mapTrack);
+        }
+      } catch(e) {}
     }
     return (d.tracks || []).slice(0, 3).map(mapTrack);
   }
@@ -89,15 +100,19 @@ export default async function handler(req, res) {
   async function claudeRecommend(artistsWithGenres, mode = 'discovery') {
     const prompt = mode === 'wave'
       ? `Пользователь слушает этих артистов: ${artistsWithGenres}.
-Подбери персональное радио — похожих артистов в том же стиле и жанре, включая малоизвестных.
+Подбери персональное радио — ТОЛЬКО артистов в том же стиле, жанре и языке. Если пользователь слушает русский рэп — рекомендуй русских рэперов. Если слушает поп — рекомендуй поп. Не смешивай языки и жанры.
 Ответь ТОЛЬКО JSON без объяснений: {"artists":["Имя1","Имя2","Имя3","Имя4","Имя5","Имя6","Имя7","Имя8"]}`
       : `Пользователь слушает: ${artistsWithGenres}.
-Порекомендуй артистов для открытий — похожий стиль но другие имена, которые он скорее всего не слышал.
+Порекомендуй артистов для открытий — СТРОГО в том же жанре и на том же языке. Если пользователь слушает русский рэп, рекомендуй ТОЛЬКО русских рэперов. Не рекомендуй артистов из совершенно других жанров.
 Ответь ТОЛЬКО JSON: {"artists":["Имя1","Имя2","Имя3","Имя4","Имя5","Имя6"]}`;
 
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY || '',
+        'anthropic-version': '2023-06-01',
+      },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 200,
@@ -139,6 +154,25 @@ export default async function handler(req, res) {
       let topData = await spFetch('/artists/' + artist_id + '/top-tracks?market=US');
       if (!topData.tracks?.length) topData = await spFetch('/artists/' + artist_id + '/top-tracks?market=RU');
       if (!topData.tracks?.length) topData = await spFetch('/artists/' + artist_id + '/top-tracks?market=KZ');
+      if (!topData.tracks?.length) topData = await spFetch('/artists/' + artist_id + '/top-tracks?market=GB');
+
+      // Фолбэк — ищем треки артиста через search если top-tracks пустой
+      if (!topData.tracks?.length && artistData.name) {
+        const searchFallback = await spFetch('/search?q=' + encodeURIComponent('artist:' + artistData.name) + '&type=track&limit=10&market=US');
+        if (!searchFallback.tracks?.items?.length) {
+          const searchFallback2 = await spFetch('/search?q=' + encodeURIComponent(artistData.name) + '&type=track&limit=10&market=RU');
+          topData = { tracks: searchFallback2.tracks?.items || [] };
+        } else {
+          topData = { tracks: searchFallback.tracks.items };
+        }
+      }
+
+      // Альбомы — тоже пробуем с другим market если пусто
+      let albumItems = albumsData.items || [];
+      if (!albumItems.length) {
+        const albumsFallback = await spFetch('/artists/' + artist_id + '/albums?market=RU&limit=20&include_groups=album,single,appears_on');
+        albumItems = albumsFallback.items || [];
+      }
 
       const artist = {
         id: artistData.id, name: artistData.name,
@@ -147,7 +181,7 @@ export default async function handler(req, res) {
         followers: artistData.followers?.total || 0,
       };
       const topTracks = (topData.tracks || []).slice(0, 10).map(mapTrack);
-      const allAlbums = (albumsData.items || []).map(mapAlbum);
+      const allAlbums = albumItems.map(mapAlbum);
       return res.status(200).json({
         artist, topTracks,
         albums: allAlbums.filter(a => a.type === 'album'),
@@ -278,7 +312,6 @@ export default async function handler(req, res) {
         .filter(t => {
           if (seenT.has(t.id)) return false;
           seenT.add(t.id);
-          // Максимум 2 трека от одного артиста
           artistCount[t.artist] = (artistCount[t.artist] || 0) + 1;
           return artistCount[t.artist] <= 2;
         })
@@ -336,39 +369,75 @@ export default async function handler(req, res) {
       if (!track) return res.status(400).json({ error: 'Нет трека' });
       let targetId = null;
       if (track.startsWith('id:')) {
-        // Формат: id:ARTIST_ID|name
         targetId = track.slice(3).split('|')[0];
       } else {
-        // Формат: "Artist - Track"
-        const artistName = track.split(' - ')[0].trim();
-        // Сначала ищем артиста
-        const searchData = await spFetch('/search?q=' + encodeURIComponent(artistName) + '&type=artist&limit=1&market=US');
-        targetId = searchData.artists?.items?.[0]?.id || null;
+        targetId = await findArtistId(track.split(' - ')[0].trim());
       }
       if (!targetId) {
-        // Последний фолбэк — ищем как трек
         const fb = await spFetch('/search?q='+encodeURIComponent(track)+'&type=track&limit=10&market=US');
         return res.status(200).json({ tracks: (fb.tracks?.items||[]).map(mapTrack) });
       }
       const related = await getRelated(targetId);
       if (!related.length) {
-        // Если нет related, ищем по жанрам артиста
-        const artistInfo = await getArtistInfo(targetId).catch(() => null);
-        if (artistInfo?.genres?.length) {
-          const genre = artistInfo.genres[0];
-          const genreSearch = await spFetch('/search?q=' + encodeURIComponent('genre:' + genre) + '&type=track&limit=' + limit + '&market=US');
-          return res.status(200).json({ tracks: (genreSearch.tracks?.items||[]).map(mapTrack) });
-        }
+        // Фолбэк — ищем по жанрам артиста
+        try {
+          const info = await getArtistInfo(targetId);
+          if (info.genres?.length) {
+            const genreQ = info.genres.slice(0, 2).join(' ');
+            const gs = await spFetch('/search?q=' + encodeURIComponent(genreQ) + '&type=track&limit=' + limit + '&market=US');
+            return res.status(200).json({ tracks: (gs.tracks?.items||[]).map(mapTrack) });
+          }
+        } catch(e) {}
         return res.status(200).json({ tracks: [] });
       }
       const groups = await Promise.all(related.slice(0,6).map(a=>getTopTracks(a.id)));
       const seen = new Set();
+      const artistCount = {};
       return res.status(200).json({
         tracks: groups.flat()
-          .filter(t=>{ if(seen.has(t.id)) return false; seen.add(t.id); return true; })
           .sort(() => Math.random() - 0.5)
+          .filter(t=>{
+            if(seen.has(t.id)) return false;
+            seen.add(t.id);
+            artistCount[t.artist] = (artistCount[t.artist]||0)+1;
+            return artistCount[t.artist] <= 2;
+          })
           .slice(0, parseInt(limit))
       });
+    }
+
+    // ── ДИАГНОСТИКА ──
+    if (action === 'debug') {
+      const results = {
+        spotify_token: false,
+        spotify_search: false,
+        claude_api_key: false,
+        claude_api: false,
+        claude_response: null,
+        errors: [],
+      };
+
+      // Проверяем Spotify
+      try {
+        const token = await getSpotifyToken();
+        results.spotify_token = !!token;
+        const s = await spFetch('/search?q=Drake&type=artist&limit=1');
+        results.spotify_search = !!(s.artists?.items?.length);
+      } catch(e) { results.errors.push('Spotify: ' + e.message); }
+
+      // Проверяем Claude API
+      results.claude_api_key = !!(process.env.ANTHROPIC_API_KEY);
+      if (results.claude_api_key) {
+        try {
+          const testNames = await claudeRecommend('Drake (hip hop, rap), The Weeknd (r&b, pop)', 'discovery');
+          results.claude_api = testNames.length > 0;
+          results.claude_response = testNames;
+        } catch(e) { results.errors.push('Claude: ' + e.message); }
+      } else {
+        results.errors.push('ANTHROPIC_API_KEY не установлен в переменных окружения');
+      }
+
+      return res.status(200).json(results);
     }
 
     return res.status(400).json({ error: 'Неизвестный action' });
