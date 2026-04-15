@@ -95,9 +95,9 @@ export default async function handler(req, res) {
     return d.artists?.items?.[0]?.id || null;
   }
 
-  // ── CLAUDE — контентная фильтрация ──
+  // ── GEMINI — контентная фильтрация ──
   // Принимает список артистов с жанрами, возвращает похожих
-  async function claudeRecommend(artistsWithGenres, mode = 'discovery') {
+  async function aiRecommend(artistsWithGenres, mode = 'discovery') {
     const prompt = mode === 'wave'
       ? `Пользователь слушает этих артистов: ${artistsWithGenres}.
 Подбери персональное радио — ТОЛЬКО артистов в том же стиле, жанре и языке. Если пользователь слушает русский рэп — рекомендуй русских рэперов. Если слушает поп — рекомендуй поп. Не смешивай языки и жанры.
@@ -106,21 +106,23 @@ export default async function handler(req, res) {
 Порекомендуй артистов для открытий — СТРОГО в том же жанре и на том же языке. Если пользователь слушает русский рэп, рекомендуй ТОЛЬКО русских рэперов. Не рекомендуй артистов из совершенно других жанров.
 Ответь ТОЛЬКО JSON: {"artists":["Имя1","Имя2","Имя3","Имя4","Имя5","Имя6"]}`;
 
-    const r = await fetch('https://api.anthropic.com/v1/messages', {
+    const apiKey = process.env.GEMINI_API_KEY || '';
+    const model = 'gemini-2.5-flash-lite';
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+    const r = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY || '',
-        'anthropic-version': '2023-06-01',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 200,
-        messages: [{ role: 'user', content: prompt }]
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.9,
+          maxOutputTokens: 256,
+        }
       })
     });
     const d = await r.json();
-    const text = d.content?.[0]?.text || '{}';
+    const text = d.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
     const m = text.match(/\{[\s\S]*?\}/);
     const parsed = JSON.parse(m ? m[0] : '{}');
     return parsed.artists || [];
@@ -236,7 +238,7 @@ export default async function handler(req, res) {
       // Claude подбирает похожих артистов по контенту
       let claudeNames = [];
       try {
-        claudeNames = await claudeRecommend(artistsDesc, 'wave');
+        claudeNames = await aiRecommend(artistsDesc, 'wave');
       } catch(e) {}
 
       // Фолбэк — Spotify related если Claude не ответил
@@ -292,7 +294,7 @@ export default async function handler(req, res) {
 
       // Claude подбирает открытия
       let recNames = [];
-      try { recNames = await claudeRecommend(desc, 'discovery'); } catch(e) {}
+      try { recNames = await aiRecommend(desc, 'discovery'); } catch(e) {}
 
       // Фолбэк
       if (!recNames.length) {
@@ -336,7 +338,7 @@ export default async function handler(req, res) {
         .join(', ');
 
       let recNames = [];
-      try { recNames = await claudeRecommend(desc, 'discovery'); } catch(e) {}
+      try { recNames = await aiRecommend(desc, 'discovery'); } catch(e) {}
       if (!recNames.length) {
         const rg = await Promise.all(seedIds.slice(0,2).map(id=>getRelated(id)));
         const sf = new Set(seedIds);
@@ -411,9 +413,9 @@ export default async function handler(req, res) {
       const results = {
         spotify_token: false,
         spotify_search: false,
-        claude_api_key: false,
-        claude_api: false,
-        claude_response: null,
+        gemini_api_key: false,
+        gemini_api: false,
+        gemini_response: null,
         errors: [],
       };
 
@@ -425,16 +427,16 @@ export default async function handler(req, res) {
         results.spotify_search = !!(s.artists?.items?.length);
       } catch(e) { results.errors.push('Spotify: ' + e.message); }
 
-      // Проверяем Claude API
-      results.claude_api_key = !!(process.env.ANTHROPIC_API_KEY);
-      if (results.claude_api_key) {
+      // Проверяем Gemini API
+      results.gemini_api_key = !!(process.env.GEMINI_API_KEY);
+      if (results.gemini_api_key) {
         try {
-          const testNames = await claudeRecommend('Drake (hip hop, rap), The Weeknd (r&b, pop)', 'discovery');
-          results.claude_api = testNames.length > 0;
-          results.claude_response = testNames;
-        } catch(e) { results.errors.push('Claude: ' + e.message); }
+          const testNames = await aiRecommend('Drake (hip hop, rap), The Weeknd (r&b, pop)', 'discovery');
+          results.gemini_api = testNames.length > 0;
+          results.gemini_response = testNames;
+        } catch(e) { results.errors.push('Gemini: ' + e.message); }
       } else {
-        results.errors.push('ANTHROPIC_API_KEY не установлен в переменных окружения');
+        results.errors.push('GEMINI_API_KEY не установлен. Получи бесплатный ключ на https://aistudio.google.com/apikey');
       }
 
       return res.status(200).json(results);
