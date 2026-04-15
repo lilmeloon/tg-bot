@@ -2590,73 +2590,86 @@ async function doSearchWithArtists(query) {
 }
 
 
-// ── FIX: скрываем мини-плеер и nav когда открыта клавиатура (iOS) ──
+// ── FIX: скрываем мини-плеер и nav когда открыта клавиатура (iOS/Telegram) ──
 (function fixPlayerKeyboard() {
   const player = document.getElementById('player');
   const nav = document.querySelector('.nav');
   const content = document.querySelector('.content');
   if (!player) return;
 
-  let baseHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
   let isKbOpen = false;
+  const isTgIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) && window.Telegram?.WebApp;
 
-  function onResize() {
-    const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-    const opened = vh < baseHeight * 0.78;
+  function hidePlayerNav() {
+    if (isKbOpen) return;
+    isKbOpen = true;
+    player.style.cssText += 'position:fixed;bottom:-200px !important;visibility:hidden;pointer-events:none;';
+    if (nav) nav.style.cssText += 'position:fixed;bottom:-200px !important;visibility:hidden;pointer-events:none;';
+    if (content) content.style.paddingBottom = '12px';
+  }
 
-    if (opened && !isKbOpen) {
-      isKbOpen = true;
-      player.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
-      player.style.transform = 'translateY(200px)';
-      player.style.opacity = '0';
-      player.style.pointerEvents = 'none';
-      if (nav) {
-        nav.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
-        nav.style.transform = 'translateY(200px)';
-        nav.style.opacity = '0';
-        nav.style.pointerEvents = 'none';
-      }
-      if (content) content.style.paddingBottom = '12px';
-    } else if (!opened && isKbOpen) {
-      isKbOpen = false;
-      player.style.transform = '';
-      player.style.opacity = '';
-      player.style.pointerEvents = '';
-      if (nav) {
-        nav.style.transform = '';
-        nav.style.opacity = '';
-        nav.style.pointerEvents = '';
-      }
-      if (content) content.style.paddingBottom = '';
-      baseHeight = vh;
+  function showPlayerNav() {
+    if (!isKbOpen) return;
+    isKbOpen = false;
+    // Восстанавливаем стили
+    player.style.bottom = '';
+    player.style.visibility = '';
+    player.style.pointerEvents = '';
+    if (nav) {
+      nav.style.bottom = '';
+      nav.style.visibility = '';
+      nav.style.pointerEvents = '';
     }
+    if (content) content.style.paddingBottom = '';
   }
 
-  if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', onResize);
-  }
-
-  // Фолбэк для Telegram WebApp на iOS
+  // Метод 1: focusin/focusout — самый надёжный для Telegram WebApp
   document.addEventListener('focusin', (e) => {
-    if (e.target.matches('input, textarea')) {
-      setTimeout(onResize, 350);
-      setTimeout(onResize, 600);
+    if (e.target.matches('input, textarea, [contenteditable]')) {
+      hidePlayerNav();
+      // Повторяем на случай задержки
+      setTimeout(hidePlayerNav, 100);
+      setTimeout(hidePlayerNav, 300);
     }
   });
-  document.addEventListener('focusout', () => {
+
+  document.addEventListener('focusout', (e) => {
+    // Не восстанавливаем если фокус перешёл на другой input
     setTimeout(() => {
-      isKbOpen = false;
-      player.style.transform = '';
-      player.style.opacity = '';
-      player.style.pointerEvents = '';
-      if (nav) {
-        nav.style.transform = '';
-        nav.style.opacity = '';
-        nav.style.pointerEvents = '';
+      const active = document.activeElement;
+      if (!active || !active.matches('input, textarea, [contenteditable]')) {
+        showPlayerNav();
       }
-      if (content) content.style.paddingBottom = '';
-    }, 150);
+    }, 200);
   });
+
+  // Метод 2: visualViewport как доп. страховка
+  if (window.visualViewport) {
+    let initialHeight = window.visualViewport.height;
+    window.visualViewport.addEventListener('resize', () => {
+      const ratio = window.visualViewport.height / initialHeight;
+      if (ratio < 0.75) {
+        hidePlayerNav();
+      } else if (ratio > 0.85 && isKbOpen) {
+        showPlayerNav();
+        initialHeight = window.visualViewport.height;
+      }
+    });
+  }
+
+  // Метод 3: для Telegram iOS — слушаем scroll/resize как доп. сигнал
+  if (isTgIOS) {
+    window.addEventListener('resize', () => {
+      setTimeout(() => {
+        const active = document.activeElement;
+        if (active && active.matches('input, textarea')) {
+          hidePlayerNav();
+        } else {
+          showPlayerNav();
+        }
+      }, 100);
+    });
+  }
 })();
 
 if ('serviceWorker' in navigator) {
