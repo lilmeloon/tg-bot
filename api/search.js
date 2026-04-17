@@ -99,34 +99,47 @@ export default async function handler(req, res) {
     return items[0]?.id || null;
   }
 
-  // ── GEMINI — контентная фильтрация ──
-  // Принимает список артистов с жанрами, возвращает похожих
+  // ── CLAUDE HAIKU — рекомендации с кешированием ──
+  const SYSTEM_PROMPT = `Ты — музыкальный рекомендательный движок. Ты знаешь всех артистов мира во всех жанрах.
+Правила:
+- Рекомендуй СТРОГО в том же жанре и на том же языке что слушает пользователь
+- Если слушает русский рэп — рекомендуй ТОЛЬКО русских рэперов
+- Если слушает K-pop — рекомендуй K-pop
+- Не смешивай языки и жанры
+- Давай точные имена артистов как они отображаются на Spotify
+- Отвечай ТОЛЬКО JSON без объяснений и markdown`;
+
   async function aiRecommend(artistsWithGenres, mode = 'discovery') {
-    const prompt = mode === 'wave'
-      ? `Пользователь слушает этих артистов: ${artistsWithGenres}.
-Подбери персональное радио — ТОЛЬКО артистов в том же стиле, жанре и языке. Если пользователь слушает русский рэп — рекомендуй русских рэперов. Если слушает поп — рекомендуй поп. Не смешивай языки и жанры.
-Ответь ТОЛЬКО JSON без объяснений: {"artists":["Имя1","Имя2","Имя3","Имя4","Имя5","Имя6","Имя7","Имя8"]}`
+    const userPrompt = mode === 'wave'
+      ? `Пользователь слушает: ${artistsWithGenres}.
+Подбери персональное радио — похожих артистов включая менее известных.
+JSON: {"artists":["Имя1","Имя2","Имя3","Имя4","Имя5","Имя6","Имя7","Имя8"]}`
       : `Пользователь слушает: ${artistsWithGenres}.
-Порекомендуй артистов для открытий — СТРОГО в том же жанре и на том же языке. Если пользователь слушает русский рэп, рекомендуй ТОЛЬКО русских рэперов. Не рекомендуй артистов из совершенно других жанров.
-Ответь ТОЛЬКО JSON: {"artists":["Имя1","Имя2","Имя3","Имя4","Имя5","Имя6"]}`;
+Порекомендуй артистов для открытий — которых он скорее всего не знает но они в том же стиле.
+JSON: {"artists":["Имя1","Имя2","Имя3","Имя4","Имя5","Имя6"]}`;
 
-    const apiKey = process.env.GEMINI_API_KEY || '';
-    const model = 'gemini-2.5-flash-lite';
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-
-    const r = await fetch(url, {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY || '',
+        'anthropic-version': '2023-06-01',
+      },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.9,
-          maxOutputTokens: 256,
-        }
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 256,
+        system: [
+          {
+            type: 'text',
+            text: SYSTEM_PROMPT,
+            cache_control: { type: 'ephemeral' }
+          }
+        ],
+        messages: [{ role: 'user', content: userPrompt }]
       })
     });
     const d = await r.json();
-    const text = d.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+    const text = d.content?.[0]?.text || '{}';
     const m = text.match(/\{[\s\S]*?\}/);
     const parsed = JSON.parse(m ? m[0] : '{}');
     return parsed.artists || [];
@@ -442,9 +455,10 @@ export default async function handler(req, res) {
       const results = {
         spotify_token: false,
         spotify_search: false,
-        gemini_api_key: false,
-        gemini_api: false,
-        gemini_response: null,
+        claude_api_key: false,
+        claude_api: false,
+        claude_response: null,
+        claude_cached: false,
         errors: [],
       };
 
@@ -456,16 +470,40 @@ export default async function handler(req, res) {
         results.spotify_search = !!(s.artists?.items?.length);
       } catch(e) { results.errors.push('Spotify: ' + e.message); }
 
-      // Проверяем Gemini API
-      results.gemini_api_key = !!(process.env.GEMINI_API_KEY);
-      if (results.gemini_api_key) {
+      // Проверяем Claude API
+      results.claude_api_key = !!(process.env.ANTHROPIC_API_KEY);
+      if (results.claude_api_key) {
         try {
-          const testNames = await aiRecommend('Drake (hip hop, rap), The Weeknd (r&b, pop)', 'discovery');
-          results.gemini_api = testNames.length > 0;
-          results.gemini_response = testNames;
-        } catch(e) { results.errors.push('Gemini: ' + e.message); }
+          // Делаем тестовый запрос
+          const r = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': process.env.ANTHROPIC_API_KEY,
+              'anthropic-version': '2023-06-01',
+            },
+            body: JSON.stringify({
+              model: 'claude-haiku-4-5-20251001',
+              max_tokens: 256,
+              system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
+              messages: [{ role: 'user', content: 'Пользователь слушает: Скриптонит (hip hop), SALUKI (hip hop). JSON: {"artists":["Имя1","Имя2","Имя3"]}' }]
+            })
+          });
+          const d = await r.json();
+          if (d.error) { results.errors.push('Claude error: ' + JSON.stringify(d.error)); }
+          else {
+            const text = d.content?.[0]?.text || '';
+            const m2 = text.match(/\{[\s\S]*?\}/);
+            const parsed = JSON.parse(m2 ? m2[0] : '{}');
+            results.claude_api = (parsed.artists?.length || 0) > 0;
+            results.claude_response = parsed.artists || text;
+            // Проверяем кеширование
+            results.claude_cached = d.usage?.cache_read_input_tokens > 0;
+            results.usage = d.usage;
+          }
+        } catch(e) { results.errors.push('Claude: ' + e.message); }
       } else {
-        results.errors.push('GEMINI_API_KEY не установлен. Получи бесплатный ключ на https://aistudio.google.com/apikey');
+        results.errors.push('ANTHROPIC_API_KEY не установлен');
       }
 
       return res.status(200).json(results);
