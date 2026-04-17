@@ -433,6 +433,16 @@
         <div class="h-scroll" id="mixes-list"></div>
       </div>
 
+      <!-- НОВИНКИ ЛЮБИМЫХ АРТИСТОВ -->
+      <div class="home-section" id="new-releases-section">
+        <div class="home-section-header">
+          <div class="home-section-title">Новинки</div>
+        </div>
+        <div class="h-scroll" id="new-releases-list">
+          <div style="color:#999;font-size:13px;padding:20px 0">Загружаю...</div>
+        </div>
+      </div>
+
       <!-- AI РЕКОМЕНДАЦИИ -->
       <div class="home-section">
         <div class="home-section-header">
@@ -749,6 +759,9 @@ const RAILWAY_URL = 'https://web-production-4beac.up.railway.app';
 // ── WAVE ──
 let waveIsPlaying = false;
 let waveTracks = [], waveIdx = 0;
+let waveArtistPool = []; // пул артистов для дозагрузки
+let wavePlayedIds = new Set(); // уже проигранные треки
+let waveLoadingMore = false; // флаг дозагрузки
 
 async function startWave() {
   if (waveIsPlaying && waveTracks.length > 0) {
@@ -758,7 +771,6 @@ async function startWave() {
     return;
   }
   document.getElementById('wave-status').textContent = 'Подбираю треки...';
-  // Берём IDs: онбординг + история + избранное
   const seedIds3 = getSeedIds();
   if (!seedIds3.length) {
     document.getElementById('wave-status').textContent = 'Выбери артистов в настройках';
@@ -771,14 +783,39 @@ async function startWave() {
     if (!data.tracks?.length) { document.getElementById('wave-status').textContent = 'Не удалось загрузить'; return; }
     waveTracks = data.tracks;
     waveQueue = data.tracks;
+    waveArtistPool = data.artist_pool || seedIds3;
+    wavePlayedIds = new Set();
     currentSource = 'wave';
     waveIsPlaying = true;
     updateWaveBtn();
-    document.getElementById('wave-status').textContent = `${waveTracks.length} треков · LIBAUD FM`;
+    document.getElementById('wave-status').textContent = `LIBAUD FM · Бесконечное радио`;
     await playTrack(0, 'wave');
   } catch(e) {
     document.getElementById('wave-status').textContent = 'Ошибка загрузки';
   }
+}
+
+// Дозагрузка треков для радио (без Claude — только Spotify)
+async function waveLoadMore() {
+  if (waveLoadingMore || !waveArtistPool.length) return;
+  waveLoadingMore = true;
+  try {
+    const playedStr = [...wavePlayedIds].slice(-50).join(','); // последние 50
+    const poolStr = waveArtistPool.join(',');
+    const res = await fetch(`/api/search?action=wave_more&artist_ids=${encodeURIComponent(poolStr)}&played=${encodeURIComponent(playedStr)}`);
+    const data = await res.json();
+    if (data.tracks?.length) {
+      waveQueue.push(...data.tracks);
+      // Добавляем новых артистов в пул
+      if (data.new_artists?.length) {
+        const poolSet = new Set(waveArtistPool);
+        for (const id of data.new_artists) {
+          if (!poolSet.has(id)) { poolSet.add(id); waveArtistPool.push(id); }
+        }
+      }
+    }
+  } catch(e) {}
+  waveLoadingMore = false;
 }
 
 function updateWaveBtn() {
@@ -1450,11 +1487,30 @@ audio.addEventListener('timeupdate', () => {
   document.getElementById('fs-dur').textContent = durStr;
   // Предзагрузка следующего трека когда осталось 20 сек
   if (audio.duration - audio.currentTime < 20) preloadNext();
+  // Дозагрузка радио когда очередь заканчивается
+  if (currentSource === 'wave' && currentIdx >= waveQueue.length - 5) waveLoadMore();
 });
 
 audio.addEventListener('ended', () => {
-  if (currentSource === 'wave' && currentIdx >= waveQueue.length - 1) {
-    startWave(); // Загружаем новую порцию
+  if (currentSource === 'wave') {
+    // Отмечаем проигранный трек
+    const t = waveQueue[currentIdx];
+    if (t) wavePlayedIds.add(t.id);
+    // Дозагрузка когда осталось мало треков
+    if (currentIdx >= waveQueue.length - 5) waveLoadMore();
+    // Если есть следующий — играем, иначе ждём загрузки
+    if (currentIdx < waveQueue.length - 1) {
+      nextTrack();
+    } else {
+      // Ждём загрузки новых треков
+      const waitForMore = setInterval(() => {
+        if (waveQueue.length > currentIdx + 1) {
+          clearInterval(waitForMore);
+          nextTrack();
+        }
+      }, 500);
+      setTimeout(() => clearInterval(waitForMore), 10000); // таймаут 10с
+    }
   } else {
     nextTrack();
   }
@@ -2129,8 +2185,8 @@ async function finishOnboarding() {
   localStorage.setItem('ob_artist_ids', JSON.stringify(obIds));
   document.getElementById('onboarding').classList.add('hidden');
   showToast('🎵 Подбираю музыку для тебя...');
-  ['ai','related','albums'].forEach(k => localStorage.removeItem('recs_cache_' + k));
-  setTimeout(() => { loadRelated(true); loadAiRecs(true); loadRecAlbums(true); }, 300);
+  ['ai','related','albums','new_releases'].forEach(k => localStorage.removeItem('recs_cache_' + k));
+  setTimeout(() => { loadNewReleases(true); loadRelated(true); loadAiRecs(true); loadRecAlbums(true); }, 300);
 }
 
 // ── СБРОС ДАННЫХ ──
@@ -2148,31 +2204,76 @@ function resetAllData() {
 }
 
 // ════════════════════════════════════════════
-// ── РЕКОМЕНДАЦИИ РАЗ В ДЕНЬ ──
+// ── УМНОЕ КЕШИРОВАНИЕ ──
 // ════════════════════════════════════════════
 
 function getCachedRecs(key) {
   try {
     const raw = localStorage.getItem('recs_cache_' + key);
     if (!raw) return null;
-    const { data, date } = JSON.parse(raw);
-    const today = new Date().toDateString();
-    if (date !== today) return null; // устарело
+    const { data, expires } = JSON.parse(raw);
+    if (Date.now() > expires) return null;
     return data;
   } catch { return null; }
 }
 
-function setCachedRecs(key, data) {
+function setCachedRecs(key, data, ttlHours = 24) {
   try {
     localStorage.setItem('recs_cache_' + key, JSON.stringify({
-      data, date: new Date().toDateString()
+      data, expires: Date.now() + ttlHours * 60 * 60 * 1000
+    }));
+  } catch {}
+}
+
+// Кеш до следующей пятницы
+function setCachedUntilFriday(key, data) {
+  try {
+    const now = new Date();
+    const dayOfWeek = now.getDay(); // 0=вс, 5=пт
+    let daysUntilFriday = (5 - dayOfWeek + 7) % 7;
+    if (daysUntilFriday === 0) daysUntilFriday = 7; // если сегодня пятница — до следующей
+    const friday = new Date(now);
+    friday.setDate(friday.getDate() + daysUntilFriday);
+    friday.setHours(0, 0, 0, 0);
+    localStorage.setItem('recs_cache_' + key, JSON.stringify({
+      data, expires: friday.getTime()
     }));
   } catch {}
 }
 
 function invalidateDailyRecs() {
-  // Вызывать при значительном изменении вкусов (не нужно сейчас)
   ['ai', 'related', 'albums'].forEach(k => localStorage.removeItem('recs_cache_' + k));
+}
+
+// ── НОВИНКИ ЛЮБИМЫХ АРТИСТОВ ──
+async function loadNewReleases(force = false) {
+  const container = document.getElementById('new-releases-list');
+  if (!container) return;
+
+  if (!force) {
+    const cached = getCachedRecs('new_releases');
+    if (cached && cached.length) { renderHScroll('new-releases-list', cached); return; }
+  }
+
+  const seedIds = getSeedIds();
+  if (!seedIds.length) {
+    container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Слушай музыку чтобы появились новинки</div>';
+    return;
+  }
+
+  container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Ищу новинки...</div>';
+  try {
+    const res = await fetch(`/api/search?action=new_releases&artist_ids=${encodeURIComponent(seedIds.join(','))}`);
+    const data = await res.json();
+    if (data.tracks?.length) {
+      setCachedUntilFriday('new_releases', data.tracks);
+      renderHScroll('new-releases-list', data.tracks);
+    } else {
+      container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Нет свежих релизов</div>';
+    }
+  } catch(e) {
+    container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Ошибка загрузки</div>';
+  }
 }
 
 loadDownloadsFromServer();
@@ -2180,7 +2281,7 @@ checkOnboarding();
 setTimeout(() => {
   renderPlaylists();
   renderMixes();
-  if (history.length > 0) { loadRelated(); loadAiRecs(); loadRecAlbums(); }
+  if (history.length > 0) { loadNewReleases(); loadRelated(); loadAiRecs(); loadRecAlbums(); }
 }, 300);
 
 function renderOffline() {
@@ -2309,6 +2410,7 @@ function switchTab(tab, tabEl, navEl) {
   if (tab === 'home') {
     renderPlaylists();
     renderMixes();
+    loadNewReleases();
     loadRelated();
     loadAiRecs();
     loadRecAlbums();
