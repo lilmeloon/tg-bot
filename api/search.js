@@ -99,24 +99,35 @@ export default async function handler(req, res) {
     return items[0]?.id || null;
   }
 
-  // ── CLAUDE HAIKU — рекомендации с кешированием ──
-  const SYSTEM_PROMPT = `Ты — музыкальный рекомендательный движок. Ты знаешь всех артистов мира во всех жанрах.
-Правила:
-- Рекомендуй СТРОГО в том же жанре и на том же языке что слушает пользователь
-- Если слушает русский рэп — рекомендуй ТОЛЬКО русских рэперов
-- Если слушает K-pop — рекомендуй K-pop
-- Не смешивай языки и жанры
-- Давай точные имена артистов как они отображаются на Spotify
-- Отвечай ТОЛЬКО JSON без объяснений и markdown`;
+  // ── CLAUDE HAIKU — экспертные рекомендации с кешированием ──
+  const SYSTEM_PROMPT = `### ROLE
+Ты — экспертный алгоритм музыкальных рекомендаций уровня Spotify и Яндекс.Музыка. Твоя задача: на основе входных данных о предпочтениях пользователя составить список из 15 максимально похожих композиций для бесшовного прослушивания.
+
+### RECOMMENDATION LOGIC (Content-Based)
+Используй следующие критерии для подбора:
+- Совпадение поджанров (например, не просто "Rock", а "Post-Punk" или "Indie Surf").
+- Сходство BPM (темпа) и ритмического рисунка.
+- Сходство тембра голоса вокалиста и инструментального состава.
+- Эмоциональный окрас (грустный/меланхоличный против энергичного/позитивного).
+- "Эпоха" и качество продакшена (чтобы треки 70-х не шли вперемешку с современным гиперпопом, если это не задано явно).
+- Язык: если пользователь слушает русскоязычную музыку — рекомендуй преимущественно русскоязычную.
+
+### BATCHING & EFFICIENCY
+- Генерируй ровно 15 треков за один раз.
+- Первые 3 трека — максимально близки к вводным ("безопасные рекомендации").
+- Следующие 7 треков — расширение границ (похожие по вайбу, но других исполнителей).
+- Последние 5 треков — "Discovery" (новый опыт на основе косвенных признаков).
+
+### OUTPUT FORMAT
+Отвечай строго в формате JSON. Не пиши никакого вступительного или пояснительного текста.
+{"recommendations":[{"artist":"string","track":"string","match_score":0.95}]}`;
 
   async function aiRecommend(artistsWithGenres, mode = 'discovery') {
     const userPrompt = mode === 'wave'
-      ? `Пользователь слушает: ${artistsWithGenres}.
-Подбери персональное радио — 15-20 разных похожих артистов, включая известных и менее известных. Разнообразь максимально, но строго в рамках жанра.
-JSON: {"artists":["Имя1","Имя2","Имя3","Имя4","Имя5","Имя6","Имя7","Имя8","Имя9","Имя10","Имя11","Имя12","Имя13","Имя14","Имя15"]}`
+      ? `Пользователь слушает этих артистов: ${artistsWithGenres}.
+Составь персональное радио — 15 треков от разных артистов, микс знакомого и нового. Используй логику BATCHING из системного промпта.`
       : `Пользователь слушает: ${artistsWithGenres}.
-Порекомендуй артистов для открытий — которых он скорее всего не знает но они в том же стиле.
-JSON: {"artists":["Имя1","Имя2","Имя3","Имя4","Имя5","Имя6"]}`;
+Подбери 15 треков для открытий — преимущественно от артистов, которых пользователь скорее всего не знает, но они в том же стиле и вайбе. Используй логику BATCHING из системного промпта.`;
 
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -127,7 +138,7 @@ JSON: {"artists":["Имя1","Имя2","Имя3","Имя4","Имя5","Имя6"]}`
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 256,
+        max_tokens: 1024,
         system: [
           {
             type: 'text',
@@ -140,9 +151,22 @@ JSON: {"artists":["Имя1","Имя2","Имя3","Имя4","Имя5","Имя6"]}`
     });
     const d = await r.json();
     const text = d.content?.[0]?.text || '{}';
-    const m = text.match(/\{[\s\S]*?\}/);
+    const m = text.match(/\{[\s\S]*\}/);
     const parsed = JSON.parse(m ? m[0] : '{}');
-    return parsed.artists || [];
+
+    // Извлекаем из нового формата {recommendations: [{artist, track}]}
+    if (parsed.recommendations) {
+      return parsed.recommendations.map(r => ({
+        artist: r.artist,
+        track: r.track,
+        match_score: r.match_score || 0,
+      }));
+    }
+    // Фолбэк на старый формат {artists: [...]}
+    if (parsed.artists) {
+      return parsed.artists.map(name => ({ artist: name, track: null, match_score: 0 }));
+    }
+    return [];
   }
 
   try {
@@ -255,7 +279,7 @@ JSON: {"artists":["Имя1","Имя2","Имя3","Имя4","Имя5","Имя6"]}`
 
       // Собираем огромный пул артистов: Claude + related + seed
       const allArtistIds = new Set(seedIds);
-      const artistPool = [...seedIds]; // начинаем с seed
+      const artistPool = [...seedIds];
 
       // Добавляем related
       for (const group of relGroups) {
@@ -264,22 +288,38 @@ JSON: {"artists":["Имя1","Имя2","Имя3","Имя4","Имя5","Имя6"]}`
         }
       }
 
-      // Добавляем Claude рекомендации (находим их ID)
+      // Claude вернул {artist, track} пары — ищем конкретные треки + artist IDs
+      let aiTracks = [];
       if (aiNames.length) {
-        const aiIds = (await Promise.all(aiNames.slice(0, 15).map(findArtistId))).filter(Boolean);
-        for (const id of aiIds) {
-          if (!allArtistIds.has(id)) { allArtistIds.add(id); artistPool.push(id); }
-        }
+        // Параллельно ищем все треки от Claude
+        const searchResults = await Promise.all(aiNames.slice(0, 15).map(async rec => {
+          try {
+            const q = rec.track
+              ? `${rec.track} ${rec.artist}`
+              : rec.artist;
+            const s = await spFetch('/search?q=' + encodeURIComponent(q) + '&type=track&limit=2&market=RU');
+            const found = s.tracks?.items?.[0];
+            if (found) {
+              // Добавляем артиста в пул
+              const aid = found.artists[0]?.id;
+              if (aid && !allArtistIds.has(aid)) { allArtistIds.add(aid); artistPool.push(aid); }
+              return mapTrack(found);
+            }
+            return null;
+          } catch(e) { return null; }
+        }));
+        aiTracks = searchResults.filter(Boolean);
       }
 
       // Берём треки от случайной выборки из пула (не от всех — слишком долго)
       const shuffledPool = artistPool.sort(() => Math.random() - 0.5);
       const trackBatch = await Promise.all(shuffledPool.slice(0, 10).map(id => getTopTracks(id)));
 
-      // Собираем и перемешиваем
+      // Собираем и перемешиваем: AI треки + пул + знакомые
       const seen = new Set();
       const artistCount = {};
       const waveTracks = [
+        ...aiTracks,
         ...trackBatch.flat(),
         ...famTracks.flat(),
       ]
@@ -395,7 +435,7 @@ JSON: {"artists":["Имя1","Имя2","Имя3","Имя4","Имя5","Имя6"]}`
       return res.status(200).json({ tracks: allTracks });
     }
 
-    // ── AI РЕКОМЕНДАЦИИ — быстрые ──
+    // ── AI РЕКОМЕНДАЦИИ (Открытия) — Claude 1 раз в день ──
     if (action === 'ai_recommend') {
       let seedIds = [];
       if (artist_ids) {
@@ -406,20 +446,27 @@ JSON: {"artists":["Имя1","Имя2","Имя3","Имя4","Имя5","Имя6"]}`
       }
       if (!seedIds.length) return res.status(200).json({ tracks: [] });
 
-      // ПАРАЛЛЕЛЬНО: Gemini + Spotify related
-      const [aiTracks, relTracks] = await Promise.all([
-        // Gemini путь
+      // ПАРАЛЛЕЛЬНО: Claude (конкретные треки) + Spotify related (фолбэк)
+      const [aiRecs, relTracks] = await Promise.all([
+        // Claude путь — получаем конкретные artist+track пары
         (async () => {
           try {
-            const infos = await Promise.all(seedIds.slice(0, 3).map(id => getArtistInfo(id).catch(() => null)));
+            const infos = await Promise.all(seedIds.slice(0, 4).map(id => getArtistInfo(id).catch(() => null)));
             const desc = infos.filter(Boolean).map(a => `${a.name} (${(a.genres||[]).slice(0,2).join(', ')||'музыка'})`).join(', ');
-            const recNames = await aiRecommend(desc, 'discovery');
-            if (!recNames.length) return [];
-            const recIds = (await Promise.all(recNames.slice(0,6).map(findArtistId))).filter(Boolean);
-            return (await Promise.all(recIds.map(id => getTopTracks(id)))).flat();
+            const recs = await aiRecommend(desc, 'discovery');
+            if (!recs.length) return [];
+            // Ищем конкретные треки на Spotify
+            const found = await Promise.all(recs.slice(0, 15).map(async rec => {
+              try {
+                const q = rec.track ? `${rec.track} ${rec.artist}` : rec.artist;
+                const s = await spFetch('/search?q=' + encodeURIComponent(q) + '&type=track&limit=1&market=RU');
+                return s.tracks?.items?.[0] ? mapTrack(s.tracks.items[0]) : null;
+              } catch(e) { return null; }
+            }));
+            return found.filter(Boolean);
           } catch(e) { return []; }
         })(),
-        // Spotify related путь (быстрый фолбэк)
+        // Spotify related фолбэк
         (async () => {
           try {
             const rg = await Promise.all(seedIds.slice(0,2).map(id => getRelated(id)));
@@ -433,12 +480,10 @@ JSON: {"artists":["Имя1","Имя2","Имя3","Имя4","Имя5","Имя6"]}`
         })(),
       ]);
 
-      // Предпочитаем Gemini, фолбэк на related
-      const allTracks = aiTracks.length >= 3 ? aiTracks : [...aiTracks, ...relTracks];
+      const allTracks = aiRecs.length >= 5 ? aiRecs : [...aiRecs, ...relTracks];
       const seenT = new Set();
       const artistCount = {};
       const result = allTracks
-        .sort(() => Math.random() - 0.5)
         .filter(t => {
           if (seenT.has(t.id)) return false;
           seenT.add(t.id);
