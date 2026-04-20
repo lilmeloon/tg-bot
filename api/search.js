@@ -392,47 +392,53 @@ export default async function handler(req, res) {
     if (action === 'new_releases') {
       let seedIds = [];
       if (artist_ids) {
-        seedIds = artist_ids.split(',').map(s => s.trim()).filter(Boolean).slice(0, 10);
+        seedIds = artist_ids.split(',').map(s => s.trim()).filter(Boolean).slice(0, 12);
       }
-      if (!seedIds.length) return res.status(200).json({ tracks: [] });
+      if (!seedIds.length) return res.status(200).json({ releases: [] });
 
-      // Берём последние релизы каждого артиста
+      // Берём последний релиз каждого артиста (до 90 дней)
       const results = await Promise.all(seedIds.map(async id => {
         try {
-          const d = await spFetch('/artists/' + id + '/albums?market=RU&limit=3&include_groups=single,album');
-          const items = d.items || [];
-          // Фильтруем только свежие (последние 30 дней)
+          const [dRU, dUS] = await Promise.all([
+            spFetch('/artists/' + id + '/albums?market=RU&limit=5&include_groups=single,album'),
+            spFetch('/artists/' + id + '/albums?market=US&limit=5&include_groups=single,album'),
+          ]);
+          const items = dRU.items?.length ? dRU.items : dUS.items || [];
+          if (!items.length) return null;
+
+          // Берём самый свежий релиз
           const now = Date.now();
-          const fresh = items.filter(a => {
-            if (!a.release_date) return false;
-            const releaseTime = new Date(a.release_date).getTime();
-            return (now - releaseTime) < 30 * 24 * 60 * 60 * 1000; // 30 дней
-          });
-          if (!fresh.length) return [];
-          // Берём треки из свежих альбомов
-          const albumTracks = await Promise.all(fresh.slice(0, 2).map(async album => {
-            const td = await spFetch('/albums/' + album.id + '/tracks?limit=5');
-            return (td.items || []).map(t => ({
-              id: t.id, name: t.name,
-              artist: t.artists[0]?.name || '', artist_id: t.artists[0]?.id || '',
-              album: album.name, album_id: album.id,
-              cover: album.images?.[0]?.url || null,
-              dur: Math.floor(t.duration_ms/60000)+':'+String(Math.floor((t.duration_ms%60000)/1000)).padStart(2,'0'),
-              release_date: album.release_date,
-            }));
-          }));
-          return albumTracks.flat();
-        } catch(e) { return []; }
+          const fresh = items
+            .filter(a => {
+              if (!a.release_date) return false;
+              const t = new Date(a.release_date).getTime();
+              return (now - t) < 90 * 24 * 60 * 60 * 1000; // 90 дней
+            })
+            .sort((a, b) => (b.release_date || '').localeCompare(a.release_date || ''));
+
+          if (!fresh.length) return null;
+          const album = fresh[0];
+
+          return {
+            id: album.id,
+            name: album.name,
+            artist: album.artists[0]?.name || '',
+            artist_id: album.artists[0]?.id || id,
+            cover: album.images?.[0]?.url || null,
+            year: album.release_date?.slice(0, 4) || '',
+            release_date: album.release_date || '',
+            type: album.album_type, // 'album' или 'single'
+            total_tracks: album.total_tracks,
+          };
+        } catch(e) { return null; }
       }));
 
-      // Собираем, убираем дубли, сортируем по дате
-      const seen = new Set();
-      const allTracks = results.flat()
-        .filter(t => { if (seen.has(t.id)) return false; seen.add(t.id); return true; })
-        .sort((a, b) => (b.release_date || '').localeCompare(a.release_date || ''))
-        .slice(0, 20);
+      // Фильтруем nulls, сортируем по дате
+      const releases = results
+        .filter(Boolean)
+        .sort((a, b) => (b.release_date || '').localeCompare(a.release_date || ''));
 
-      return res.status(200).json({ tracks: allTracks });
+      return res.status(200).json({ releases });
     }
 
     // ── AI РЕКОМЕНДАЦИИ (Открытия) — Claude 1 раз в день ──
