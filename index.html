@@ -396,6 +396,79 @@
   .ob-chip-name { font-size: 12px; font-weight: 700; color: #fff; white-space: nowrap; }
   .ob-chip-plus { font-size: 14px; color: #555; margin-left: 2px; }
   .ob-suggestion-chip.selected .ob-chip-plus { color: #000; }
+
+  /* ── СОЦИАЛЬНЫЙ МОДУЛЬ ── */
+  .social-search { padding: 12px 16px 10px; }
+  .social-search input { width: 100%; background: var(--bg2); border: var(--border); border-radius: 14px; padding: 11px 16px 11px 40px; color: #fff; font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 500; outline: none; }
+  .social-search input::placeholder { color: #444; }
+  .social-search svg { position: absolute; left: 28px; top: 50%; transform: translateY(-50%); color: #444; pointer-events: none; }
+  .social-tabs { display: flex; border-bottom: var(--border); padding: 0 4px; }
+  .social-tab { flex: 1; padding: 10px; font-size: 13px; font-weight: 700; text-transform: uppercase; background: none; border: none; cursor: pointer; color: #444; letter-spacing: 1px; transition: all 0.15s; position: relative; }
+  .social-tab.active { color: #fff; }
+  .social-tab.active::after { content:''; position: absolute; bottom: -1px; left: 20%; right: 20%; height: 2px; background: #fff; border-radius: 2px; }
+  .social-badge { position: absolute; top: 6px; right: calc(50% - 24px); width: 8px; height: 8px; background: #ff3b30; border-radius: 50%; }
+
+  .friend-item { display: flex; align-items: center; gap: 12px; padding: 10px 16px; cursor: pointer; transition: background 0.1s; }
+  .friend-item:active { background: var(--bg2); }
+  .friend-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--bg3); overflow: hidden; flex-shrink: 0; position: relative; }
+  .friend-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .friend-avatar-letter { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-family: 'Bebas Neue', sans-serif; font-size: 18px; color: #555; }
+  .friend-online { position: absolute; bottom: 1px; right: 1px; width: 10px; height: 10px; background: #1db954; border: 2px solid var(--bg); border-radius: 50%; }
+  .friend-info { flex: 1; min-width: 0; }
+  .friend-name { font-size: 14px; font-weight: 600; color: #fff; }
+  .friend-status { font-size: 11px; color: #555; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .friend-status.listening { color: #1db954; }
+  .friend-action { background: none; border: none; color: #555; cursor: pointer; padding: 8px; flex-shrink: 0; }
+  .friend-action:active { color: #fff; }
+  .friend-accept-btn { background: #fff; color: #000; border: none; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; cursor: pointer; }
+  .friend-decline-btn { background: none; border: none; color: #444; cursor: pointer; padding: 6px; }
+
+  .friend-profile { position: fixed; inset: 0; z-index: 170; background: var(--bg); transform: translateX(100%); transition: transform 0.32s cubic-bezier(0.32,0.72,0,1); display: flex; flex-direction: column; overflow: hidden; }
+  .friend-profile.open { transform: translateX(0); }
+  .friend-profile-header { position: relative; display: flex; flex-direction: column; align-items: center; padding: 48px 20px 16px; background: var(--bg2); border-bottom: var(--border); }
+  .friend-profile-back { position: absolute; top: 12px; left: 12px; width: 32px; height: 32px; background: rgba(255,255,255,0.1); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #fff; border-radius: 50%; }
+  .friend-profile-avatar { width: 80px; height: 80px; border-radius: 50%; overflow: hidden; background: var(--bg3); }
+  .friend-profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .friend-profile-name { font-size: 18px; font-weight: 700; color: #fff; margin-top: 10px; }
+  .friend-profile-username { font-size: 12px; color: #555; margin-top: 2px; }
+  .friend-profile-actions { display: flex; gap: 10px; margin-top: 14px; }
+  .fp-btn { padding: 8px 20px; border-radius: 20px; font-size: 12px; font-weight: 700; cursor: pointer; border: none; transition: all 0.15s; }
+  .fp-btn:active { opacity: 0.8; }
+  .fp-btn-primary { background: #fff; color: #000; }
+  .fp-btn-secondary { background: var(--bg3); color: #fff; }
+  .fp-btn-danger { background: transparent; color: #ff3b30; border: 1px solid #ff3b30; }
+  .friend-profile-body { flex: 1; overflow-y: auto; scrollbar-width: none; padding-bottom: 100px; }
+  .friend-profile-body::-webkit-scrollbar { display: none; }
+  .fp-section { padding: 16px; }
+  .fp-section-title { font-size: 15px; font-weight: 700; color: #fff; margin-bottom: 10px; }
+  .fp-now-playing { display: flex; align-items: center; gap: 12px; background: var(--bg2); border-radius: 12px; padding: 12px; }
+  .fp-np-cover { width: 44px; height: 44px; border-radius: 8px; overflow: hidden; background: var(--bg3); flex-shrink: 0; }
+  .fp-np-cover img { width: 100%; height: 100%; object-fit: cover; }
+  .fp-np-info { flex: 1; min-width: 0; }
+  .fp-np-name { font-size: 13px; font-weight: 600; color: #fff; }
+  .fp-np-artist { font-size: 11px; color: #555; margin-top: 1px; }
+  .fp-np-eq { display: flex; align-items: flex-end; gap: 2px; height: 16px; flex-shrink: 0; }
+  .fp-np-eq span { width: 3px; background: #1db954; border-radius: 2px; animation: bounce 0.6s ease infinite alternate; }
+  .fp-np-eq span:nth-child(2) { animation-delay: 0.2s; }
+  .fp-np-eq span:nth-child(3) { animation-delay: 0.1s; }
+
+  .share-modal { position: fixed; inset: 0; z-index: 500; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); display: flex; align-items: flex-end; opacity: 0; pointer-events: none; transition: opacity 0.25s; }
+  .share-modal.open { opacity: 1; pointer-events: all; }
+  .share-sheet { width: 100%; max-height: 70vh; background: #1a1a1a; border-radius: 20px 20px 0 0; padding: 16px 20px calc(20px + env(safe-area-inset-bottom)); transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.32,0.72,0,1); }
+  .share-modal.open .share-sheet { transform: translateY(0); }
+  .share-friend-list { display: flex; flex-direction: column; gap: 2px; max-height: 50vh; overflow-y: auto; scrollbar-width: none; }
+  .share-friend-list::-webkit-scrollbar { display: none; }
+  .share-send-btn { font-size: 12px; font-weight: 700; color: #000; background: #fff; padding: 6px 14px; border-radius: 20px; flex-shrink: 0; border: none; cursor: pointer; }
+  .share-send-btn.sent { background: var(--bg3); color: #1db954; }
+
+  .inbox-section { padding: 16px; }
+  .inbox-card { display: flex; align-items: center; gap: 12px; padding: 10px 0; cursor: pointer; }
+  .inbox-card:active { opacity: 0.7; }
+  .inbox-sender { width: 28px; height: 28px; border-radius: 50%; overflow: hidden; background: var(--bg3); flex-shrink: 0; position: absolute; bottom: -2px; right: -2px; border: 2px solid var(--bg); }
+  .inbox-sender img { width: 100%; height: 100%; object-fit: cover; }
+  .inbox-cover-wrap { width: 46px; height: 46px; position: relative; flex-shrink: 0; }
+  .inbox-cover { width: 46px; height: 46px; border-radius: 10px; overflow: hidden; background: var(--bg3); }
+  .inbox-cover img { width: 100%; height: 100%; object-fit: cover; }
 </style>
 </head>
 <body>
@@ -530,6 +603,38 @@
     </div>
     <div id="sec-history" class="section" style="display:none"></div>
     <div id="sec-offline" class="section" style="display:none"></div>
+
+    <!-- СОЦИАЛЬНЫЙ МОДУЛЬ -->
+    <div id="sec-social" class="section">
+      <div class="social-tabs">
+        <button class="social-tab active" onclick="switchSocialTab('friends',this)">Друзья</button>
+        <button class="social-tab" onclick="switchSocialTab('requests',this)" id="social-tab-requests">Запросы</button>
+        <button class="social-tab" onclick="switchSocialTab('inbox',this)" id="social-tab-inbox">Входящие</button>
+      </div>
+
+      <div id="social-friends" class="social-content">
+        <div class="social-search" style="position:relative;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:28px;top:50%;transform:translateY(-50%);color:#444;pointer-events:none;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="social-search-input" placeholder="Найти по @username..." style="padding-left:40px;">
+        </div>
+        <div id="social-search-results" style="display:none;padding:0 16px;"></div>
+        <div id="social-friends-list">
+          <div class="empty" style="padding:40px 20px;"><p>Загружаю...</p></div>
+        </div>
+      </div>
+
+      <div id="social-requests" class="social-content" style="display:none;">
+        <div id="social-requests-list">
+          <div class="empty" style="padding:40px 20px;"><p>Нет входящих запросов</p></div>
+        </div>
+      </div>
+
+      <div id="social-inbox" class="social-content" style="display:none;">
+        <div id="social-inbox-list">
+          <div class="empty" style="padding:40px 20px;"><p>Друзья ещё не присылали треки</p></div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- MINI PLAYER -->
@@ -617,9 +722,9 @@
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         Скачать
       </button>
-      <button class="fs-action" id="fs-dislike" onclick="dislikeCurrent()">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3z"/><line x1="17" y1="2" x2="17" y2="11"/></svg>
-        Не нравится
+      <button class="fs-action" onclick="openShareModal()">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+        Друзьям
       </button>
       <button class="fs-action" id="fs-shuffle" onclick="toggleShuffle()">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
@@ -644,6 +749,10 @@
     <button class="nav-item" id="nav-fav" onclick="switchTab('fav',null,this)">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
       <span>Избранное</span>
+    </button>
+    <button class="nav-item" id="nav-social" onclick="switchTab('social',null,this)">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span>Друзья</span>
     </button>
   </nav>
 </div>
@@ -1711,7 +1820,7 @@ async function playTrack(idx, source = 'all') {
     await audio.play();
     showToast('');
     updateMediaSession(t);
-    // Показываем album hint если трек из Волны и из альбома
+    socialNowPlaying(t, true);
 
   } catch(e) {
     if (e.name === 'AbortError') return;
@@ -1780,6 +1889,10 @@ function updatePlayBtn() {
   if (fpa) fpa.style.display = paused ? 'none' : 'block';
   const fsCover = document.getElementById('fs-cover');
   if (fsCover) { fsCover.classList.toggle('playing', !paused); fsCover.classList.toggle('paused', paused); }
+  // Social: обновляем статус
+  const list = currentSource === 'wave' ? waveQueue : currentSource === 'fav' ? favorites : tracks;
+  const t = list?.[currentIdx];
+  if (t) socialNowPlaying(t, !paused);
 }
 
 function prevTrack() {
@@ -2415,6 +2528,9 @@ function switchTab(tab, tabEl, navEl) {
     loadAiRecs();
     loadRecAlbums();
   }
+  if (tab === 'social') {
+    loadSocialFriends();
+  }
 }
 
 function renderAll() {
@@ -2972,7 +3088,233 @@ if ('serviceWorker' in navigator) {
     });
   });
 }
+
+// ══════════════════════════════════════════
+// ── SOCIAL MODULE ──
+// ══════════════════════════════════════════
+
+const SOCIAL_INIT_DATA = window.Telegram?.WebApp?.initData || '';
+const SOCIAL_USER_ID = String(window.Telegram?.WebApp?.initDataUnsafe?.user?.id || '');
+
+async function socialFetch(path, opts = {}) {
+  const res = await fetch(RAILWAY_URL + path, {
+    ...opts,
+    headers: { 'Content-Type': 'application/json', 'X-Telegram-Init-Data': SOCIAL_INIT_DATA, ...(opts.headers || {}) },
+  });
+  return res.json();
+}
+
+let socialFriends = [];
+let socialInitDone = false;
+
+async function initSocial() {
+  if (!SOCIAL_INIT_DATA || socialInitDone) return;
+  socialInitDone = true;
+  try { await socialFetch('/api/social/auth', { method: 'POST' }); } catch(e) {}
+}
+if (SOCIAL_INIT_DATA) setTimeout(initSocial, 1000);
+
+function switchSocialTab(tab, el) {
+  document.querySelectorAll('.social-tab').forEach(t => t.classList.remove('active'));
+  if (el) el.classList.add('active');
+  ['friends','requests','inbox'].forEach(t => {
+    const s = document.getElementById('social-' + t);
+    if (s) s.style.display = t === tab ? 'block' : 'none';
+  });
+  if (tab === 'friends') loadSocialFriends();
+  if (tab === 'requests') loadSocialRequests();
+  if (tab === 'inbox') loadSocialInbox();
+}
+
+async function loadSocialFriends() {
+  const list = document.getElementById('social-friends-list');
+  try {
+    const data = await socialFetch('/api/social/friends');
+    socialFriends = data.friends || [];
+    if (!socialFriends.length) {
+      list.innerHTML = '<div class="empty" style="padding:40px 20px;"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><p>Найди друзей по @username</p></div>';
+      return;
+    }
+    list.innerHTML = socialFriends.map(f => {
+      const np = f.now_playing;
+      const av = f.photo_url ? `<img src="${f.photo_url}">` : `<div class="friend-avatar-letter">${(f.first_name||f.username||'?')[0].toUpperCase()}</div>`;
+      return `<div class="friend-item" onclick="openFriendProfile('${f.id}')">
+        <div class="friend-avatar">${av}${np ? '<div class="friend-online"></div>' : ''}</div>
+        <div class="friend-info"><div class="friend-name">${f.first_name||f.username||'User'}</div>
+        <div class="friend-status ${np?'listening':''}">${np ? '🎵 '+np.track_name+' — '+np.artist : '@'+(f.username||'')}</div></div></div>`;
+    }).join('');
+  } catch(e) { list.innerHTML = '<div class="empty" style="padding:40px 20px;"><p>Ошибка</p></div>'; }
+}
+
+async function loadSocialRequests() {
+  const list = document.getElementById('social-requests-list');
+  try {
+    const data = await socialFetch('/api/social/friends/requests');
+    const reqs = data.requests || [];
+    if (!reqs.length) { list.innerHTML = '<div class="empty" style="padding:40px 20px;"><p>Нет запросов</p></div>'; return; }
+    list.innerHTML = reqs.map(r => `<div class="friend-item">
+      <div class="friend-avatar">${r.photo_url ? `<img src="${r.photo_url}">` : `<div class="friend-avatar-letter">${(r.first_name||'?')[0].toUpperCase()}</div>`}</div>
+      <div class="friend-info"><div class="friend-name">${r.first_name||r.username||'User'}</div><div class="friend-status">@${r.username||''}</div></div>
+      <button class="friend-accept-btn" onclick="event.stopPropagation();acceptFriendReq('${r.id}',this)">Принять</button>
+      <button class="friend-decline-btn" onclick="event.stopPropagation();declineFriendReq('${r.id}',this.closest('.friend-item'))"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>`).join('');
+  } catch(e) { list.innerHTML = '<div class="empty" style="padding:40px 20px;"><p>Ошибка</p></div>'; }
+}
+
+async function acceptFriendReq(id, btn) { btn.textContent='✓'; btn.disabled=true; await socialFetch('/api/social/friends/accept',{method:'POST',body:JSON.stringify({sender_id:id})}); showToast('Друг добавлен'); setTimeout(loadSocialRequests,500); }
+async function declineFriendReq(id, el) { el.style.opacity='0.3'; await socialFetch(`/api/social/friends/${id}`,{method:'DELETE'}); setTimeout(loadSocialRequests,300); }
+
+async function loadSocialInbox() {
+  const list = document.getElementById('social-inbox-list');
+  try {
+    const data = await socialFetch('/api/social/drops');
+    const drops = data.drops || [];
+    if (!drops.length) { list.innerHTML = '<div class="empty" style="padding:40px 20px;"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg><p>Друзья ещё не присылали треки</p></div>'; return; }
+    list.innerHTML = drops.map((d,i) => `<div class="inbox-card" onclick="playDrop(${i})">
+      <div class="inbox-cover-wrap"><div class="inbox-cover">${d.cover_url?`<img src="${d.cover_url}">`:'<div style="width:100%;height:100%;background:#1e1e1e"></div>'}</div>
+      ${d.sender_photo?`<div class="inbox-sender"><img src="${d.sender_photo}"></div>`:''}</div>
+      <div class="track-info"><div class="track-name">${d.track_name}</div><div class="track-meta">${d.artist} · от ${d.sender_name||d.sender_username||'друга'}</div></div>
+    </div>`).join('');
+    list._drops = drops;
+  } catch(e) { list.innerHTML = '<div class="empty" style="padding:40px 20px;"><p>Ошибка</p></div>'; }
+}
+
+function playDrop(idx) {
+  const drops = document.getElementById('social-inbox-list')._drops;
+  if (!drops?.[idx]) return;
+  tracks = drops.map(d => ({id:d.track_id,name:d.track_name,artist:d.artist,cover:d.cover_url,album:d.album||''}));
+  currentSource = 'all'; playTrack(idx,'all');
+}
+
+// Search users
+let _socialSearchTm = null;
+document.addEventListener('DOMContentLoaded', () => {
+  const inp = document.getElementById('social-search-input');
+  if (!inp) return;
+  inp.addEventListener('input', () => {
+    clearTimeout(_socialSearchTm);
+    const q = inp.value.trim();
+    if (q.length < 2) { document.getElementById('social-search-results').style.display = 'none'; return; }
+    _socialSearchTm = setTimeout(() => searchUsers(q), 400);
+  });
+});
+
+async function searchUsers(q) {
+  const c = document.getElementById('social-search-results');
+  const data = await socialFetch(`/api/social/search?q=${encodeURIComponent(q)}`);
+  const users = data.users || [];
+  if (!users.length) { c.style.display='block'; c.innerHTML='<div style="color:#555;font-size:13px;padding:12px 0;">Не найдено</div>'; return; }
+  c.style.display = 'block';
+  c.innerHTML = users.map(u => `<div class="friend-item" style="border-radius:10px;">
+    <div class="friend-avatar">${u.photo_url?`<img src="${u.photo_url}">`:`<div class="friend-avatar-letter">${(u.first_name||u.username||'?')[0].toUpperCase()}</div>`}</div>
+    <div class="friend-info"><div class="friend-name">${u.first_name||u.username||'User'}</div><div class="friend-status">@${u.username||''}</div></div>
+    <button class="friend-accept-btn" onclick="event.stopPropagation();addFriend('${u.id}',this)">Добавить</button>
+  </div>`).join('');
+}
+
+async function addFriend(id, btn) { btn.textContent='...'; btn.disabled=true; const r = await socialFetch('/api/social/friends/request',{method:'POST',body:JSON.stringify({target_id:id})}); btn.textContent = r.status==='accepted'?'✓ Друзья':'✓ Отправлено'; showToast(r.status==='accepted'?'Друг добавлен!':'Запрос отправлен'); }
+
+// Friend Profile
+async function openFriendProfile(id) {
+  const fp = document.getElementById('friend-profile');
+  fp.classList.add('open');
+  document.getElementById('fp-name').textContent = '...';
+  document.getElementById('fp-username').textContent = '';
+  document.getElementById('fp-avatar').innerHTML = '';
+  document.getElementById('fp-actions').innerHTML = '';
+  document.getElementById('fp-now-playing').innerHTML = '';
+  document.getElementById('fp-top-weekly').innerHTML = '';
+  document.getElementById('fp-recent').innerHTML = '';
+  try {
+    const data = await socialFetch(`/api/social/profile/${id}`);
+    const u = data.user;
+    document.getElementById('fp-name').textContent = u.first_name||u.username||'User';
+    document.getElementById('fp-username').textContent = u.username ? '@'+u.username : '';
+    document.getElementById('fp-avatar').innerHTML = u.photo_url ? `<img src="${u.photo_url}">` : `<div class="friend-avatar-letter" style="font-size:32px;width:100%;height:100%;">${(u.first_name||'?')[0].toUpperCase()}</div>`;
+    document.getElementById('fp-actions').innerHTML = data.is_friend ? `<button class="fp-btn fp-btn-danger" onclick="removeFP('${id}')">Удалить из друзей</button>` : `<button class="fp-btn fp-btn-primary" onclick="addFriend('${id}',this)">Добавить</button>`;
+    if (data.now_playing) {
+      document.getElementById('fp-now-playing').innerHTML = `<div class="fp-section"><div class="fp-section-title">Слушает сейчас</div><div class="fp-now-playing"><div class="fp-np-cover">${data.now_playing.cover_url?`<img src="${data.now_playing.cover_url}">`:'<div style="width:100%;height:100%;background:#1e1e1e"></div>'}</div><div class="fp-np-info"><div class="fp-np-name">${data.now_playing.track_name}</div><div class="fp-np-artist">${data.now_playing.artist}</div></div><div class="fp-np-eq"><span style="height:4px"></span><span style="height:8px"></span><span style="height:6px"></span></div></div></div>`;
+    }
+    if (data.top_weekly?.length) {
+      document.getElementById('fp-top-weekly').innerHTML = `<div class="fp-section"><div class="fp-section-title">Топ за неделю</div>${data.top_weekly.map((t,i)=>`<div class="artist-track" style="padding:6px 0;"><div class="artist-track-num">${i+1}</div><div class="artist-track-cover">${t.cover_url?`<img src="${t.cover_url}">`:'<div style="width:100%;height:100%;background:#1e1e1e"></div>'}</div><div class="artist-track-info"><div class="artist-track-name">${t.track_name}</div><div class="artist-track-meta">${t.artist} · ${t.play_count}×</div></div></div>`).join('')}</div>`;
+    }
+    if (data.recently_added?.length) {
+      document.getElementById('fp-recent').innerHTML = `<div class="fp-section"><div class="fp-section-title">Недавнее</div>${data.recently_added.map(t=>`<div class="artist-track" style="padding:6px 0;"><div class="artist-track-cover">${t.cover_url?`<img src="${t.cover_url}">`:'<div style="width:100%;height:100%;background:#1e1e1e"></div>'}</div><div class="artist-track-info"><div class="artist-track-name">${t.track_name}</div><div class="artist-track-meta">${t.artist}</div></div></div>`).join('')}</div>`;
+    }
+  } catch(e) { document.getElementById('fp-now-playing').innerHTML = '<div style="color:#999;padding:20px;text-align:center;">Ошибка</div>'; }
+}
+
+function closeFriendProfile() { document.getElementById('friend-profile').classList.remove('open'); }
+async function removeFP(id) { await socialFetch(`/api/social/friends/${id}`,{method:'DELETE'}); showToast('Удалён'); closeFriendProfile(); loadSocialFriends(); }
+
+// Share Modal
+function openShareModal() {
+  const list = currentSource==='wave'?waveQueue:currentSource==='fav'?favorites:tracks;
+  const t = list[currentIdx]; if (!t) return;
+  if (!SOCIAL_INIT_DATA) { showToast('Войди через Telegram'); return; }
+  document.getElementById('share-track-info').textContent = `${t.name} — ${t.artist}`;
+  document.getElementById('share-modal').classList.add('open');
+  (async()=>{
+    const data = await socialFetch('/api/social/friends');
+    const friends = data.friends||[];
+    const c = document.getElementById('share-friend-list');
+    if (!friends.length) { c.innerHTML='<div style="color:#555;font-size:13px;padding:16px;text-align:center;">Добавь друзей</div>'; return; }
+    c.innerHTML = friends.map(f=>`<div class="friend-item" style="padding:8px 0;">
+      <div class="friend-avatar" style="width:36px;height:36px;">${f.photo_url?`<img src="${f.photo_url}">`:`<div class="friend-avatar-letter" style="font-size:14px;">${(f.first_name||'?')[0].toUpperCase()}</div>`}</div>
+      <div class="friend-info"><div class="friend-name" style="font-size:13px;">${f.first_name||f.username||'User'}</div></div>
+      <button class="share-send-btn" onclick="shareSend('${f.id}',this)">Отправить</button>
+    </div>`).join('');
+  })();
+}
+function closeShareModal() { document.getElementById('share-modal').classList.remove('open'); }
+async function shareSend(rid, btn) {
+  const list = currentSource==='wave'?waveQueue:currentSource==='fav'?favorites:tracks;
+  const t = list[currentIdx]; if (!t) return;
+  btn.textContent='...'; btn.disabled=true;
+  try { await socialFetch('/api/social/drop',{method:'POST',body:JSON.stringify({receiver_id:rid,track_id:t.id,track_name:t.name,artist:t.artist,cover_url:t.cover||'',album:t.album||''})}); btn.textContent='✓ Отправлено'; btn.classList.add('sent'); } catch(e) { btn.textContent='Ошибка'; }
+}
+
+// Now Playing sync
+let _npTrack=null, _npStart=0;
+function socialNowPlaying(t, playing) {
+  if (!SOCIAL_INIT_DATA||!t) return;
+  if (_npTrack && _npStart && Date.now()-_npStart>30000) {
+    socialFetch('/api/social/listen-log',{method:'POST',body:JSON.stringify({track_id:_npTrack.id,track_name:_npTrack.name,artist:_npTrack.artist,cover_url:_npTrack.cover||'',duration_ms:Date.now()-_npStart})}).catch(()=>{});
+  }
+  _npTrack=t; _npStart=playing?Date.now():0;
+  socialFetch('/api/social/now-playing',{method:'POST',body:JSON.stringify({track_id:t.id,track_name:t.name,artist:t.artist,cover_url:t.cover||'',position_ms:Math.floor((audio.currentTime||0)*1000),is_playing:playing})}).catch(()=>{});
+}
 </script>
+
+<!-- SHARE MODAL -->
+<div class="share-modal" id="share-modal" onclick="if(event.target===this)closeShareModal()">
+  <div class="share-sheet">
+    <div class="reset-handle"></div>
+    <div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:4px;">Отправить друзьям</div>
+    <div style="font-size:12px;color:#555;margin-bottom:14px;" id="share-track-info">—</div>
+    <div class="share-friend-list" id="share-friend-list">
+      <div style="color:#999;font-size:13px;padding:16px 0;text-align:center;">Загружаю...</div>
+    </div>
+  </div>
+</div>
+
+<!-- FRIEND PROFILE -->
+<div class="friend-profile" id="friend-profile">
+  <div class="friend-profile-header">
+    <button class="friend-profile-back" onclick="closeFriendProfile()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <div class="friend-profile-avatar" id="fp-avatar"></div>
+    <div class="friend-profile-name" id="fp-name">—</div>
+    <div class="friend-profile-username" id="fp-username"></div>
+    <div class="friend-profile-actions" id="fp-actions"></div>
+  </div>
+  <div class="friend-profile-body" id="fp-body">
+    <div id="fp-now-playing"></div>
+    <div id="fp-top-weekly"></div>
+    <div id="fp-recent"></div>
+  </div>
+</div>
 
 <div class="reset-modal" id="reset-modal" onclick="if(event.target===this)closeResetModal()">
   <div class="reset-sheet">
