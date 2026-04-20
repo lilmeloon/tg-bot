@@ -288,14 +288,27 @@ function updateObBtn() {
 document.addEventListener('DOMContentLoaded', () => {
   const inp = document.getElementById('ob-search-input');
   if (!inp) return;
+
   inp.addEventListener('input', () => {
     clearTimeout(obSearchTimer);
     const q = inp.value.trim();
     if (!q) { document.getElementById('ob-search-results').style.display = 'none'; return; }
     obSearchTimer = setTimeout(() => searchObArtists(q), 400);
   });
+
+  // Увеличенный таймаут — iOS нужно время чтобы зарегистрировать tap до blur
   inp.addEventListener('blur', () => {
-    setTimeout(() => { document.getElementById('ob-search-results').style.display = 'none'; }, 200);
+    setTimeout(() => {
+      const results = document.getElementById('ob-search-results');
+      if (results) results.style.display = 'none';
+    }, 400);
+  });
+
+  // Когда фокус на поиске — скроллим онбординг вверх чтобы результаты были видны
+  inp.addEventListener('focus', () => {
+    setTimeout(() => {
+      inp.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 300);
   });
 });
 
