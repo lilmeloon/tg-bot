@@ -847,5 +847,3 @@ function renderNewReleases(releases) {
   }).join('');
 }
 
-function renderOffline() {
-  const list = document.getElementById('offline-list');

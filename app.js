@@ -628,3 +628,30 @@ if ('serviceWorker' in navigator) {
       console.warn('SW registration failed:', err);
     });
   });
+}
+
+// ── ИНИЦИАЛИЗАЦИЯ ──
+loadDownloadsFromServer();
+checkOnboarding();
+setTimeout(() => {
+  renderPlaylists();
+  renderMixes();
+  if (history.length > 0 || getSeedIds().length > 0) {
+    loadNewReleases();
+    loadRelated();
+    loadAiRecs();
+    loadRecAlbums();
+  }
+}, 300);
+
+// Telegram аватар
+if (tgUser) {
+  const letter = document.getElementById('avatar-letter');
+  const img = document.getElementById('avatar-img');
+  if (letter) letter.textContent = (tgUser.first_name || 'U')[0].toUpperCase();
+  if (tgUser.photo_url && img) {
+    img.src = tgUser.photo_url;
+    img.style.display = 'block';
+    if (letter) letter.style.display = 'none';
+  }
+}
