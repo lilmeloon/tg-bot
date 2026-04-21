@@ -384,7 +384,7 @@ async function loadRecAlbums(force = false) {
         return;
       }
     } catch(_) {}
-    container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Нажми «Обновить»</div>';
+    container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Не удалось загрузить</div>';
   }
 }
 
@@ -519,7 +519,7 @@ async function loadAiRecs(force = false) {
         }
       }
     } catch(_) {}
-    container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Нажми «Обновить»</div>';
+    container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Не удалось загрузить</div>';
   }
 }
 
@@ -607,7 +607,7 @@ async function loadRelated(force = false) {
         if (data2.tracks?.length) { renderHScroll('related-list', data2.tracks); return; }
       }
     } catch(_) {}
-    container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Нажми «Обновить»</div>';
+    container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Не удалось загрузить</div>';
   }
 }
 

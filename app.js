@@ -31,7 +31,36 @@ function showSearchEmpty() {
   if (labelWrap) labelWrap.style.display = 'none';
   const histBtn = document.getElementById('history-btn');
   if (histBtn) histBtn.style.color = '#555';
-  document.getElementById('track-list').innerHTML = '<div class="empty"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><p>Введи название трека<br>или исполнителя</p></div>';
+  document.getElementById('search-browse').style.display = 'block';
+  document.getElementById('search-suggestions').style.display = 'none';
+  document.getElementById('track-list').innerHTML = '';
+  renderBrowseGrid();
+}
+
+// Рендер сетки жанров/настроений на странице поиска
+const BROWSE_CATEGORIES = [
+  { id: 'rus_rap', name: 'Русский рэп', emoji: '🎤', grad: 'linear-gradient(135deg,#ff5722,#c2185b)' },
+  { id: 'chill', name: 'Chill', emoji: '🌙', grad: 'linear-gradient(135deg,#1a237e,#283593)' },
+  { id: 'energy', name: 'Энергия', emoji: '⚡', grad: 'linear-gradient(135deg,#ff6f00,#bf360c)' },
+  { id: 'romance', name: 'Романтика', emoji: '💕', grad: 'linear-gradient(135deg,#ad1457,#6a1b9a)' },
+  { id: 'hip_hop', name: 'Хип-хоп', emoji: '🎧', grad: 'linear-gradient(135deg,#1b5e20,#004d40)' },
+  { id: 'pop', name: 'Поп', emoji: '🌸', grad: 'linear-gradient(135deg,#e91e63,#9c27b0)' },
+  { id: 'workout', name: 'Тренировка', emoji: '💪', grad: 'linear-gradient(135deg,#d32f2f,#f57c00)' },
+  { id: 'focus', name: 'Фокус', emoji: '🧠', grad: 'linear-gradient(135deg,#1565c0,#0277bd)' },
+  { id: 'dance', name: 'Танцы', emoji: '💃', grad: 'linear-gradient(135deg,#c2185b,#ad1457)' },
+  { id: 'sad', name: 'Грусть', emoji: '🌧️', grad: 'linear-gradient(135deg,#37474f,#263238)' },
+  { id: 'phonk', name: 'Фонк', emoji: '🏎️', grad: 'linear-gradient(135deg,#212121,#424242)' },
+  { id: 'rock', name: 'Рок', emoji: '🎸', grad: 'linear-gradient(135deg,#5d4037,#3e2723)' },
+];
+
+function renderBrowseGrid() {
+  const grid = document.getElementById('browse-grid');
+  if (!grid) return;
+  grid.innerHTML = BROWSE_CATEGORIES.map(c => `
+    <div class="browse-card" style="background:${c.grad};" onclick="playMix('${c.id}')">
+      <div class="browse-card-title">${c.name}</div>
+      <div class="browse-card-deco" style="background:rgba(255,255,255,0.15);">${c.emoji}</div>
+    </div>`).join('');
 }
 
 function toggleHistoryInSearch() {
@@ -506,6 +535,10 @@ function showToast(msg) {
 async function doSearchWithArtists(query) {
   const list = document.getElementById('track-list');
   const label = document.getElementById('search-label');
+  const browse = document.getElementById('search-browse');
+  const sugg = document.getElementById('search-suggestions');
+  if (browse) browse.style.display = 'none';
+  if (sugg) sugg.style.display = 'none';
   if (label) label.textContent = 'Результаты';
   list.innerHTML = '<div class="empty"><p>Ищу...</p></div>';
   try {

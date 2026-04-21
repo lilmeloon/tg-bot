@@ -42,11 +42,6 @@
         </div>
       </div>
 
-      <div class="home-section" id="mixes-section">
-        <div class="home-section-header"><div class="home-section-title">Сборники</div></div>
-        <div class="h-scroll" id="mixes-list"></div>
-      </div>
-
       <div class="home-section" id="new-releases-section">
         <div class="home-section-header"><div class="home-section-title">Новинки</div></div>
         <div class="h-scroll" id="new-releases-list"><div style="color:#999;font-size:13px;padding:20px 0">Загружаю...</div></div>
@@ -67,15 +62,7 @@
         <div class="h-scroll" id="related-list"><div style="color:#999;font-size:13px;padding:20px 0">Слушай музыку чтобы появились рекомендации</div></div>
       </div>
 
-      <div class="home-section" style="padding-bottom:24px;">
-        <div class="home-section-header"><div class="home-section-title">Плейлисты</div></div>
-        <div class="playlist-grid" id="playlist-grid">
-          <div class="playlist-add" onclick="createPlaylist()">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            <span>Создать</span>
-          </div>
-        </div>
-      </div>
+      <div style="height:20px;"></div>
     </div>
 
     <!-- ПОИСК -->
@@ -96,8 +83,15 @@
         <div class="section-label" style="display:none;" id="search-label-wrap">
           <span id="search-label">Результаты</span>
         </div>
+        <!-- Сборники (показываются когда поиск пуст) -->
+        <div id="search-browse" style="padding:0 16px 20px;">
+          <div style="font-size:15px;font-weight:700;color:#fff;margin:8px 0 12px;">Жанры и настроения</div>
+          <div class="browse-grid" id="browse-grid"></div>
+        </div>
+        <!-- Автоподсказки поиска -->
+        <div id="search-suggestions" style="display:none;padding:0 16px;"></div>
         <div class="track-list" id="track-list">
-          <div class="empty"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><p>Введи название трека<br>или исполнителя</p></div>
+          <div class="empty" style="display:none;"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><p>Введи название трека<br>или исполнителя</p></div>
         </div>
       </div>
     </div>
