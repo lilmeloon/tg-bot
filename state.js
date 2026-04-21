@@ -32,6 +32,9 @@ let waveArtistPool = [];
 let wavePlayedIds = new Set();
 let waveLoadingMore = false;
 
+// Сборники (жанровые плейлисты)
+let mixTracks = {};
+
 // Telegram
 const tg = window.Telegram?.WebApp;
 if (tg) { tg.expand(); tg.setHeaderColor('#0a0a0a'); tg.setBackgroundColor('#0a0a0a'); }
