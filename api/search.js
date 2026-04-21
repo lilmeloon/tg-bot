@@ -1,3 +1,17 @@
+// Кеш токена и данных на уровне модуля — переживает между вызовами в рамках warm lambda
+let _spotifyToken = null;
+let _tokenExpiry = 0;
+const _memCache = new Map(); // key -> { data, expiry }
+
+function getCached(key) {
+  const c = _memCache.get(key);
+  if (c && Date.now() < c.expiry) return c.data;
+  return null;
+}
+function setCached(key, data, ttlMs = 3600000) {
+  _memCache.set(key, { data, expiry: Date.now() + ttlMs });
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -5,10 +19,15 @@ export default async function handler(req, res) {
 
   const { q, action, artists, artist_ids, track, artist_id, album_id, limit = 20 } = req.query;
 
-  // ── SPOTIFY TOKEN ──
-  let _token = null;
+  // Кешируем на edge большинство запросов
+  const cacheable = ['rec_albums', 'related', 'ai_recommend', 'new_releases', 'artist', 'album_tracks'];
+  if (cacheable.includes(action)) {
+    res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400');
+  }
+
+  // ── SPOTIFY TOKEN (с кешем на уровне модуля) ──
   async function getSpotifyToken() {
-    if (_token) return _token;
+    if (_spotifyToken && Date.now() < _tokenExpiry) return _spotifyToken;
     const r = await fetch('https://accounts.spotify.com/api/token', {
       method: 'POST',
       headers: {
@@ -20,8 +39,9 @@ export default async function handler(req, res) {
       body: 'grant_type=client_credentials'
     });
     const d = await r.json();
-    _token = d.access_token;
-    return _token;
+    _spotifyToken = d.access_token;
+    _tokenExpiry = Date.now() + 50 * 60 * 1000; // токен живёт 1 час, кешируем на 50 мин
+    return _spotifyToken;
   }
 
   function mapTrack(t) {
@@ -59,13 +79,21 @@ export default async function handler(req, res) {
   }
 
   async function getTopTracks(id) {
+    const cacheKey = 'top:' + id;
+    const cached = getCached(cacheKey);
+    if (cached) return cached;
+
     // Параллельно пробуем US и RU — берём первый непустой
     const [dUS, dRU] = await Promise.all([
       spFetch('/artists/' + id + '/top-tracks?market=US'),
       spFetch('/artists/' + id + '/top-tracks?market=RU'),
     ]);
     const d = dUS.tracks?.length ? dUS : dRU.tracks?.length ? dRU : null;
-    if (d) return (d.tracks || []).slice(0, 3).map(mapTrack);
+    if (d) {
+      const tracks = (d.tracks || []).slice(0, 3).map(mapTrack);
+      setCached(cacheKey, tracks, 6 * 3600000); // 6 часов
+      return tracks;
+    }
 
     // Фолбэк через поиск по artist ID
     try {
@@ -571,19 +599,6 @@ export default async function handler(req, res) {
       if (!track) return res.status(400).json({ error: 'Нет трека' });
       const fb = await spFetch('/search?q=' + encodeURIComponent(track) + '&type=track&limit=' + limit + '&market=US');
       return res.status(200).json({ tracks: (fb.tracks?.items || []).map(mapTrack) });
-    }
-      if (track.startsWith('id:')) {
-        targetId = track.slice(3).split('|')[0];
-      } else {
-        targetId = await findArtistId(track.split(' - ')[0].trim());
-      }
-      if (!targetId) {
-        const fb = await spFetch('/search?q='+encodeURIComponent(track)+'&type=track&limit=10&market=US');
-        return res.status(200).json({ tracks: (fb.tracks?.items||[]).map(mapTrack) });
-      }
-      // Берём топ треки артиста
-      const topTracks = await getTopTracks(targetId).catch(() => []);
-      return res.status(200).json({ tracks: topTracks.slice(0, parseInt(limit)) });
     }
 
     // ── ДИАГНОСТИКА ──
