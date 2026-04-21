@@ -244,12 +244,18 @@ function updateWaveBtn() {
 })();
 
 const MIXES = [
-  { id: 'mix_hiphop_ru',   title: 'Русский рэп',      sub: 'Лучшее',      color: '#1a1a1a', query: 'русский рэп хиты', emoji: '🎤' },
-  { id: 'mix_chill',       title: 'Chill вечер',      sub: 'Расслабься',  color: '#0d1f2d', query: 'chill lo-fi beats', emoji: '🌙' },
-  { id: 'mix_hype',        title: 'Энергия',          sub: 'Заряжайся',   color: '#1a0a00', query: 'trap hype bangers 2024', emoji: '⚡' },
-  { id: 'mix_rnb',         title: 'R&B Vibes',        sub: 'Smooth',      color: '#1a0d1a', query: 'rnb soul smooth 2024', emoji: '✨' },
-  { id: 'mix_indie',       title: 'Инди',             sub: 'Открытия',    color: '#0a1a0a', query: 'indie альтернатива хиты', emoji: '🎸' },
-  { id: 'mix_workout',     title: 'Тренировка',       sub: 'Не останавливайся', color: '#1a0a0a', query: 'workout gym motivation', emoji: '🏋️' },
+  { id: 'rus_rap',  title: 'Русский рэп', query: 'русский рэп хиты 2024' },
+  { id: 'chill',    title: 'Chill',       query: 'chill lo-fi relax' },
+  { id: 'energy',   title: 'Энергия',     query: 'trap hype bangers 2024' },
+  { id: 'romance',  title: 'Романтика',   query: 'romantic love songs' },
+  { id: 'hip_hop',  title: 'Хип-хоп',     query: 'hip hop rap 2024' },
+  { id: 'pop',      title: 'Поп',         query: 'pop hits 2024' },
+  { id: 'workout',  title: 'Тренировка',  query: 'workout gym motivation' },
+  { id: 'focus',    title: 'Фокус',       query: 'focus study instrumental' },
+  { id: 'dance',    title: 'Танцы',       query: 'dance club bangers 2024' },
+  { id: 'sad',      title: 'Грусть',      query: 'sad melancholic songs' },
+  { id: 'phonk',    title: 'Фонк',        query: 'phonk drift memphis' },
+  { id: 'rock',     title: 'Рок',         query: 'rock alternative hits' },
 ];
 
 
@@ -528,85 +534,28 @@ async function loadRelated(force = false) {
   const container = document.getElementById('related-list');
   if (!container) return;
 
-  // Дневной кэш
   if (!force) {
     const cached = getCachedRecs('related');
     if (cached && cached.length) { renderHScroll('related-list', cached); return; }
   }
 
-  // Берём seed артистов: онбординг + история + избранное
   const seedIds = getSeedIds();
-  const historyArtists = [...new Set(history.slice(0, 10).map(t => t.artist))];
-
-  if (!seedIds.length && !historyArtists.length) {
+  if (!seedIds.length) {
     container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Слушай музыку чтобы появились рекомендации</div>';
     return;
   }
 
   container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Ищу похожее...</div>';
   try {
-    // Используем related action напрямую по каждому seed артисту
-    const ids = seedIds.length ? seedIds.slice(0, 3) : [];
-    let relatedTracks = [];
-
-    if (ids.length) {
-      const promises = ids.map(id =>
-        fetch(`/api/search?action=related&track=${encodeURIComponent('id:' + id + '|artist')}&limit=8`)
-          .then(r => r.json()).catch(() => ({ tracks: [] }))
-      );
-      const results = await Promise.all(promises);
-      const seen = new Set();
-      const artistCount = {};
-      for (const data of results) {
-        for (const t of (data.tracks || [])) {
-          if (!seen.has(t.id)) {
-            artistCount[t.artist] = (artistCount[t.artist] || 0) + 1;
-            if (artistCount[t.artist] <= 2) {
-              seen.add(t.id);
-              relatedTracks.push(t);
-            }
-          }
-        }
-      }
+    const res = await fetch(`/api/search?action=related&artist_ids=${encodeURIComponent(seedIds.join(','))}&limit=15`);
+    const data = await res.json();
+    if (data.tracks?.length) {
+      setCachedRecs('related', data.tracks);
+      renderHScroll('related-list', data.tracks);
+    } else {
+      container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Нет рекомендаций</div>';
     }
-
-    // Фолбэк через поиск по артистам из истории
-    if (!relatedTracks.length && historyArtists.length) {
-      const shuffled = [...historyArtists].sort(() => Math.random() - 0.5).slice(0, 3);
-      const promises = shuffled.map(name =>
-        fetch(`/api/search?q=${encodeURIComponent(name)}&action=search`)
-          .then(r => r.json()).catch(() => ({ tracks: [] }))
-      );
-      const results = await Promise.all(promises);
-      const seen = new Set();
-      for (const data of results) {
-        for (const t of (data.tracks || [])) {
-          if (!seen.has(t.id) && !history.some(h => h.id === t.id)) {
-            seen.add(t.id);
-            relatedTracks.push(t);
-          }
-        }
-      }
-    }
-
-    if (relatedTracks.length > 0) {
-      relatedTracks.sort(() => Math.random() - 0.5);
-      const sliced = relatedTracks.slice(0, 15);
-      setCachedRecs('related', sliced);
-      renderHScroll('related-list', sliced);
-      return;
-    }
-    throw new Error('empty');
   } catch(e) {
-    // Последний фолбэк
-    try {
-      const lastTrack = history[0];
-      if (lastTrack && lastTrack.artist_id) {
-        const res2 = await fetch(`/api/search?action=related&track=${encodeURIComponent('id:' + lastTrack.artist_id + '|' + lastTrack.artist)}&limit=12`);
-        const data2 = await res2.json();
-        if (data2.tracks?.length) { renderHScroll('related-list', data2.tracks); return; }
-      }
-    } catch(_) {}
     container.innerHTML = '<div style="color:#999;font-size:13px;padding:20px 0">Не удалось загрузить</div>';
   }
 }
