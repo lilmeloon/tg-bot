@@ -119,17 +119,17 @@ function checkOnboarding() {
 // ── Рендер сетки ──
 async function loadObGrid() {
   const grid = document.getElementById('ob-grid');
-  grid.innerHTML = OB_SEED_ARTISTS.map(name => makeObCard(name)).join('');
+  if (!grid) { console.error('ob-grid not found'); return; }
+  grid.innerHTML = OB_SEED_ARTISTS.map((name, i) => makeObCard(name, i)).join('');
   // Загружаем фото батчами
   for (let i = 0; i < OB_SEED_ARTISTS.length; i += 8) {
-    await Promise.all(OB_SEED_ARTISTS.slice(i, i+8).map(name => loadObPhoto(name)));
+    await Promise.all(OB_SEED_ARTISTS.slice(i, i+8).map((name, j) => loadObPhoto(name, i+j)));
   }
 }
 
-function makeObCard(name) {
-  const esc = CSS.escape(name);
+function makeObCard(name, idx) {
   const safeName = name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-  return `<div class="ob-artist-card" id="ob-card-${esc}" onclick="toggleObArtist('${safeName}')">
+  return `<div class="ob-artist-card" id="ob-card-${idx}" data-name="${name.replace(/"/g,'&quot;')}" onclick="toggleObArtist('${safeName}',${idx})">
     <div style="width:100%;height:100%;background:var(--bg3);display:flex;align-items:center;justify-content:center;">
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
     </div>
@@ -138,20 +138,22 @@ function makeObCard(name) {
   </div>`;
 }
 
-async function loadObPhoto(name) {
-  if (obArtistData[name]) return; // уже загружено
+async function loadObPhoto(name, idx) {
+  if (obArtistData[name]) return;
   try {
-    const res = await fetch('/api/search?q=' + encodeURIComponent(name) + '&action=search');
+    const res = await fetch('/api/search?action=search&q=' + encodeURIComponent(name));
     const data = await res.json();
     const artist = data.artists?.[0];
-    if (!artist) return;
+    if (!artist) { console.warn('No artist found for:', name); return; }
     obArtistData[name] = { id: artist.id, cover: artist.cover, genres: artist.genres || [] };
-    updateObCardPhoto(name);
-  } catch(e) {}
+    updateObCardPhoto(name, idx);
+  } catch(e) { console.error('loadObPhoto error for', name, e); }
 }
 
-function updateObCardPhoto(name) {
-  const card = document.getElementById('ob-card-' + CSS.escape(name));
+function updateObCardPhoto(name, idx) {
+  const card = idx !== undefined
+    ? document.getElementById('ob-card-' + idx)
+    : document.querySelector(`[data-name="${name.replace(/"/g,'&quot;')}"]`);
   if (!card) return;
   const d = obArtistData[name];
   if (!d?.cover) return;
@@ -163,19 +165,19 @@ function updateObCardPhoto(name) {
 }
 
 // ── Выбор артиста + подгрузка похожих ──
-async function toggleObArtist(name) {
+async function toggleObArtist(name, idx) {
+  const card = idx !== undefined
+    ? document.getElementById('ob-card-' + idx)
+    : document.querySelector(`[data-name="${name.replace(/"/g,'&quot;')}"]`);
   if (obSelectedArtists.has(name)) {
     obSelectedArtists.delete(name);
-    document.getElementById('ob-card-' + CSS.escape(name))?.classList.remove('selected');
-    // Убираем строку похожих
-    document.getElementById('ob-sugg-' + CSS.escape(name))?.remove();
+    if (card) card.classList.remove('selected');
+    document.getElementById('ob-sugg-' + (idx ?? name))?.remove();
   } else {
     obSelectedArtists.add(name);
-    document.getElementById('ob-card-' + CSS.escape(name))?.classList.add('selected');
-    // Подгружаем фото если нет
-    if (!obArtistData[name]) await loadObPhoto(name);
-    // Показываем похожих артистов под карточкой
-    loadObSuggestions(name);
+    if (card) card.classList.add('selected');
+    if (!obArtistData[name]) await loadObPhoto(name, idx);
+    loadObSuggestions(name, idx);
   }
   updateObBtn();
 }
@@ -500,18 +502,6 @@ function showToast(msg) {
   toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
 }
 
-// ── ARTIST PAGE ──
-// ── TOAST ──
-let toastTimer;
-function showToast(msg) {
-  if (!msg) return;
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
-}
-
 // ── Поиск — отображаем артистов вверху ──
 async function doSearchWithArtists(query) {
   const list = document.getElementById('track-list');
@@ -631,27 +621,35 @@ if ('serviceWorker' in navigator) {
 }
 
 // ── ИНИЦИАЛИЗАЦИЯ ──
-loadDownloadsFromServer();
-checkOnboarding();
-setTimeout(() => {
-  renderPlaylists();
-  renderMixes();
-  if (history.length > 0 || getSeedIds().length > 0) {
-    loadNewReleases();
-    loadRelated();
-    loadAiRecs();
-    loadRecAlbums();
-  }
-}, 300);
+function initApp() {
+  loadDownloadsFromServer();
+  checkOnboarding();
+  setTimeout(() => {
+    renderPlaylists();
+    renderMixes();
+    if (history.length > 0 || getSeedIds().length > 0) {
+      loadNewReleases();
+      loadRelated();
+      loadAiRecs();
+      loadRecAlbums();
+    }
+  }, 300);
 
-// Telegram аватар
-if (tgUser) {
-  const letter = document.getElementById('avatar-letter');
-  const img = document.getElementById('avatar-img');
-  if (letter) letter.textContent = (tgUser.first_name || 'U')[0].toUpperCase();
-  if (tgUser.photo_url && img) {
-    img.src = tgUser.photo_url;
-    img.style.display = 'block';
-    if (letter) letter.style.display = 'none';
+  // Telegram аватар
+  if (tgUser) {
+    const letter = document.getElementById('avatar-letter');
+    const img = document.getElementById('avatar-img');
+    if (letter) letter.textContent = (tgUser.first_name || 'U')[0].toUpperCase();
+    if (tgUser.photo_url && img) {
+      img.src = tgUser.photo_url;
+      img.style.display = 'block';
+      if (letter) letter.style.display = 'none';
+    }
   }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
 }

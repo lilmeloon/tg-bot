@@ -382,8 +382,6 @@ function renderOffline() {
 
 // ── DISLIKE / BLOCK ──
 function dislikeCurrent() {
-// ── DISLIKE / BLOCK ──
-function dislikeCurrent() {
   const list = currentSource === 'wave' ? waveQueue : currentSource === 'fav' ? favorites : currentSource === 'offline' ? offlineTracks : tracks;
   const t = list[currentIdx];
   if (!t) return;
@@ -438,8 +436,6 @@ function updatePlayerFavBtn(id) {
 
 // ── MEDIA SESSION ──
 function updateMediaSession(t) {
-// ── MEDIA SESSION ──
-function updateMediaSession(t) {
   if (!('mediaSession' in navigator)) return;
   navigator.mediaSession.metadata = new MediaMetadata({
     title: t.name,
@@ -452,6 +448,3 @@ function updateMediaSession(t) {
   navigator.mediaSession.setActionHandler('previoustrack', prevTrack);
   navigator.mediaSession.setActionHandler('nexttrack', nextTrack);
 }
-
-// ── TABS ──
-function switchFavTab(tab, el) {
