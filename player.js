@@ -2,25 +2,28 @@
 
 
 function fmt(sec) {
-  if (!sec || isNaN(sec)) return '0:00';
+  if (!sec || !isFinite(sec) || isNaN(sec)) return '0:00';
   const m = Math.floor(sec / 60), s = Math.floor(sec % 60);
   return `${m}:${String(s).padStart(2,'0')}`;
 }
 
 audio.addEventListener('timeupdate', () => {
   const dur = audio.duration;
-  const isLive = !dur || !isFinite(dur);
+  const isLive = !dur || !isFinite(dur) || isNaN(dur);
   const pct = isLive ? 0 : (audio.currentTime / dur) * 100;
-  document.getElementById('progress-fill').style.width = pct + '%';
-  document.getElementById('fs-bar-fill').style.width = pct + '%';
+  const pfill = document.getElementById('progress-fill');
+  const fsfill = document.getElementById('fs-bar-fill');
+  if (pfill) pfill.style.width = pct + '%';
+  if (fsfill) fsfill.style.width = pct + '%';
   const cur = fmt(audio.currentTime);
   const durStr = isLive ? '∞' : fmt(dur);
-  document.getElementById('time-label').textContent = isLive ? cur : `${cur} / ${durStr}`;
-  document.getElementById('fs-cur').textContent = cur;
-  document.getElementById('fs-dur').textContent = durStr;
-  // Предзагрузка следующего трека когда осталось 20 сек
-  if (audio.duration - audio.currentTime < 20) preloadNext();
-  // Дозагрузка радио когда очередь заканчивается
+  const tl = document.getElementById('time-label');
+  if (tl) tl.textContent = isLive ? cur : `${cur} / ${durStr}`;
+  const fsc = document.getElementById('fs-cur');
+  const fsd = document.getElementById('fs-dur');
+  if (fsc) fsc.textContent = cur;
+  if (fsd) fsd.textContent = durStr;
+  if (!isLive && audio.duration - audio.currentTime < 20) preloadNext();
   if (currentSource === 'wave' && currentIdx >= waveQueue.length - 5) waveLoadMore();
 });
 
@@ -50,6 +53,32 @@ audio.addEventListener('ended', () => {
 });
 audio.addEventListener('playing', updatePlayBtn);
 audio.addEventListener('pause', updatePlayBtn);
+
+// Защита от перезапуска трека при блокировке экрана
+audio.addEventListener('stalled', () => {
+  console.warn('Audio stalled');
+});
+audio.addEventListener('waiting', () => {
+  // Если трек зависает — не даём ему начать сначала
+  const currentTime = audio.currentTime;
+  if (currentTime > 2) {
+    // сохраняем позицию, не даём сбросу
+    audio._savedTime = currentTime;
+  }
+});
+audio.addEventListener('loadedmetadata', () => {
+  // Если есть сохранённая позиция и она валидная — восстанавливаем
+  if (audio._savedTime && audio._savedTime > 2 && audio._savedTime < audio.duration) {
+    audio.currentTime = audio._savedTime;
+    audio._savedTime = 0;
+  }
+});
+// iOS может стопнуть аудио при блокировке — продолжаем воспроизведение когда вернулись
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && audio.src && !audio.paused) {
+    audio.play().catch(() => {});
+  }
+});
 
 function seekAudio(e) {
   if (!audio.duration) return;
