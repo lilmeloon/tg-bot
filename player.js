@@ -53,9 +53,15 @@ audio.addEventListener('pause', updatePlayBtn);
 
 function seekAudio(e) {
   if (!audio.duration) return;
+  // На мобильных: touchend дублируется onclick — берём только первое событие
+  if (e.type === 'touchend') e.preventDefault();
   const bar = e.currentTarget;
   const rect = bar.getBoundingClientRect();
-  const clientX = e.touches ? e.touches[0].clientX : (e.changedTouches ? e.changedTouches[0].clientX : e.clientX);
+  let clientX;
+  if (e.changedTouches?.length) clientX = e.changedTouches[0].clientX;
+  else if (e.touches?.length) clientX = e.touches[0].clientX;
+  else clientX = e.clientX;
+  if (clientX === undefined || clientX === 0) return; // защита от синтетических click после touchend
   const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
   audio.currentTime = pct * audio.duration;
 }
