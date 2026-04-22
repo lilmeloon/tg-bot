@@ -424,47 +424,64 @@ export default async function handler(req, res) {
       }
       if (!seedIds.length) return res.status(200).json({ releases: [] });
 
-      // Берём последний релиз каждого артиста (до 90 дней)
+      // Берём свежие релизы каждого артиста — сначала 90 дней, если пусто то год
       const results = await Promise.all(seedIds.map(async id => {
         try {
           const [dRU, dUS] = await Promise.all([
-            spFetch('/artists/' + id + '/albums?market=RU&limit=5&include_groups=single,album'),
-            spFetch('/artists/' + id + '/albums?market=US&limit=5&include_groups=single,album'),
+            spFetch('/artists/' + id + '/albums?market=RU&limit=10&include_groups=single,album'),
+            spFetch('/artists/' + id + '/albums?market=US&limit=10&include_groups=single,album'),
           ]);
           const items = dRU.items?.length ? dRU.items : dUS.items || [];
           if (!items.length) return null;
 
-          // Берём самый свежий релиз
           const now = Date.now();
-          const fresh = items
-            .filter(a => {
-              if (!a.release_date) return false;
-              const t = new Date(a.release_date).getTime();
-              return (now - t) < 90 * 24 * 60 * 60 * 1000; // 90 дней
-            })
+          const sorted = items
+            .filter(a => a.release_date)
             .sort((a, b) => (b.release_date || '').localeCompare(a.release_date || ''));
 
-          if (!fresh.length) return null;
-          const album = fresh[0];
+          // Сначала пробуем 90 дней, потом 365 дней как fallback
+          let album = sorted.find(a => {
+            const t = new Date(a.release_date).getTime();
+            return (now - t) < 90 * 24 * 60 * 60 * 1000;
+          });
+
+          if (!album) {
+            album = sorted.find(a => {
+              const t = new Date(a.release_date).getTime();
+              return (now - t) < 365 * 24 * 60 * 60 * 1000;
+            });
+          }
+
+          if (!album) return null;
 
           return {
             id: album.id,
             name: album.name,
             artist: album.artists[0]?.name || '',
             artist_id: album.artists[0]?.id || id,
+            requested_artist_id: id, // кто нас привёл
             cover: album.images?.[0]?.url || null,
             year: album.release_date?.slice(0, 4) || '',
             release_date: album.release_date || '',
-            type: album.album_type, // 'album' или 'single'
+            type: album.album_type,
             total_tracks: album.total_tracks,
           };
         } catch(e) { return null; }
       }));
 
-      // Фильтруем nulls, сортируем по дате
+      // Дедуплицируем по album_id И по artist_id (чтобы не было 3 релиза одного артиста)
+      const seenAlbums = new Set();
+      const seenArtists = new Set();
       const releases = results
         .filter(Boolean)
-        .sort((a, b) => (b.release_date || '').localeCompare(a.release_date || ''));
+        .sort((a, b) => (b.release_date || '').localeCompare(a.release_date || ''))
+        .filter(r => {
+          if (seenAlbums.has(r.id)) return false;
+          if (seenArtists.has(r.artist_id)) return false;
+          seenAlbums.add(r.id);
+          seenArtists.add(r.artist_id);
+          return true;
+        });
 
       return res.status(200).json({ releases });
     }
