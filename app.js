@@ -140,40 +140,74 @@ function checkOnboarding() {
   loadObSeeds();
 }
 
-// Загружаем начальный набор с бэка
+// Загружаем начальный набор — сначала фолбэк мгновенно, потом обогащаем с бэка
 async function loadObSeeds() {
   const grid = document.getElementById('ob-grid');
   if (!grid) return;
-  grid.innerHTML = '<div style="color:#555;padding:20px;text-align:center;">Загружаю...</div>';
+
+  // 1. Сразу показываем фолбэк (не ждём сеть)
+  await loadObFallback();
+
+  // 2. Пробуем обогатить с Railway (в фоне)
   try {
-    const res = await fetch(RAILWAY_URL + '/api/onboarding/seeds');
+    const res = await Promise.race([
+      fetch(RAILWAY_URL + '/api/onboarding/seeds'),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000))
+    ]);
     const data = await res.json();
     const artists = data.artists || [];
-    if (!artists.length) { loadObFallback(); return; }
-    obPool = artists;
-    obPoolIds = new Set(artists.map(a => a.id));
+    if (!artists.length) return;
+
+    // Обновляем пул новыми данными (сохраняем уже выбранных)
+    const newPool = artists.filter(a => a.cover); // только с фото
+    if (!newPool.length) return;
+
+    // Добавляем новых в пул не дублируя
+    newPool.forEach(a => {
+      if (!obPoolIds.has(a.id)) { obPoolIds.add(a.id); obPool.push(a); }
+      else {
+        // Обновляем фото у существующих
+        const idx = obPool.findIndex(p => p.id === a.id);
+        if (idx >= 0 && a.cover) obPool[idx].cover = a.cover;
+      }
+    });
     renderObGrid();
-    // Загружаем фото для тех у кого нет
-    await loadObPhotos(artists.filter(a => !a.cover));
   } catch(e) {
-    console.error('loadObSeeds:', e);
-    loadObFallback();
+    // Railway недоступен — фолбэк уже показан, всё ок
+    console.warn('Railway seeds unavailable, using fallback');
   }
 }
 
-// Фолбэк если бэк недоступен
+// Фолбэк с мгновенным отображением + загрузкой фото
 async function loadObFallback() {
   const FALLBACK = [
-    {id:'3TVXtAsR1Inumwj472S9r4',name:'Drake'},{id:'1Xyo4u8uXC1ZmMpatF05PJ',name:'The Weeknd'},
-    {id:'2YZyLoL8N0Wb9xBt1NhZWg',name:'Kendrick Lamar'},{id:'06HL4z0CvFAxyc27GXpf02',name:'Taylor Swift'},
-    {id:'246dkjvS1zLTtiykXe5h60',name:'Post Malone'},{id:'6qqNVTkY8uBg9cP3Jd7DAH',name:'Billie Eilish'},
-    {id:'0Y5tJX1MQlPlqiwlOH1tJY',name:'Travis Scott'},{id:'4q3ewBCX7sLwd24euuV69X',name:'Bad Bunny'},
-    {id:'5LHRHt1k9lMyONurDHEdrp',name:'Eminem'},{id:'0C8ZW7ezQVs4URX5aX7Kqx',name:'Coldplay'},
-    {id:'2A7Ch1dIhGMz3EWyxbNWBo',name:'Скриптонит'},{id:'4lGnEkKKONfFpJfcJDWV3w',name:'Oxxxymiron'},
-  ];
+    {id:'3TVXtAsR1Inumwj472S9r4', name:'Drake'},
+    {id:'1Xyo4u8uXC1ZmMpatF05PJ', name:'The Weeknd'},
+    {id:'2YZyLoL8N0Wb9xBt1NhZWg', name:'Kendrick Lamar'},
+    {id:'06HL4z0CvFAxyc27GXpf02', name:'Taylor Swift'},
+    {id:'246dkjvS1zLTtiykXe5h60', name:'Post Malone'},
+    {id:'6qqNVTkY8uBg9cP3Jd7DAH', name:'Billie Eilish'},
+    {id:'0Y5tJX1MQlPlqiwlOH1tJY', name:'Travis Scott'},
+    {id:'4q3ewBCX7sLwd24euuV69X', name:'Bad Bunny'},
+    {id:'5LHRHt1k9lMyONurDHEdrp', name:'Eminem'},
+    {id:'0C8ZW7ezQVs4URX5aX7Kqx', name:'Coldplay'},
+    {id:'2A7Ch1dIhGMz3EWyxbNWBo', name:'Скриптонит'},
+    {id:'4lGnEkKKONfFpJfcJDWV3w', name:'Oxxxymiron'},
+    {id:'0HiLKNOkpGYkH6Mwe9YZEM', name:'PHARAOH'},
+    {id:'1SqNqMmwGJXr9EkAHjifqD', name:'MORGENSHTERN'},
+    {id:'3JRMkSBcnAXlmGMBnYsV3c', name:'Miyagi'},
+    {id:'53XhwfbYqKCa1cC15pYq2q', name:'Imagine Dragons'},
+    {id:'7n2Ycct7Beij7Dj7meI4X0', name:'Rammstein'},
+    {id:'1vCWHaC5f2uS3yhpwWbIA6', name:'Avicii'},
+    {id:'4MCBfE4596Uoi2O4DtmEMz', name:'Juice WRLD'},
+    {id:'699OTQXzgjhIYAHMy9RyPD', name:'Playboi Carti'},
+  ].map(a => ({...a, cover: null}));
+
   obPool = FALLBACK;
   obPoolIds = new Set(FALLBACK.map(a => a.id));
-  renderObGrid();
+  renderObGrid(); // Показываем сразу с иконками-заглушками
+
+  // Загружаем фото параллельно через Vercel /api/search
   await loadObPhotos(FALLBACK);
 }
 
@@ -205,23 +239,32 @@ function makeObCard(a, idx) {
   </div>`;
 }
 
-// Загружаем фото для артистов без обложки через Spotify search
+// Загружаем фото через Spotify (Vercel /api/search)
 async function loadObPhotos(artists) {
-  await Promise.all(artists.slice(0, 12).map(async a => {
-    try {
-      const r = await fetch(`/api/search?action=search&q=${encodeURIComponent(a.name)}&limit=1`);
-      const d = await r.json();
-      const found = d.artists?.[0];
-      if (found?.cover) {
-        // Обновляем в пуле
-        const idx = obPool.findIndex(p => p.id === a.id);
-        if (idx >= 0) obPool[idx].cover = found.cover;
-        // Обновляем карточку в DOM
-        const imgEl = document.getElementById('ob-img-' + a.id);
-        if (imgEl) imgEl.innerHTML = `<img class="ob-card-img" src="${found.cover}" loading="lazy">`;
-      }
-    } catch(e) {}
-  }));
+  const batches = [];
+  for (let i = 0; i < artists.length; i += 6) batches.push(artists.slice(i, i+6));
+
+  for (const batch of batches) {
+    await Promise.all(batch.map(async a => {
+      try {
+        const r = await fetch(`/api/search?action=search&q=${encodeURIComponent(a.name)}&limit=3`);
+        const d = await r.json();
+        // Ищем точное совпадение по ID
+        const found = d.artists?.find(ar => ar.id === a.id) || d.artists?.[0];
+        if (found?.cover) {
+          const idx = obPool.findIndex(p => p.id === a.id);
+          if (idx >= 0) {
+            obPool[idx].cover = found.cover;
+            // Обновляем карточку без перерендера всей сетки
+            const imgEl = document.getElementById('ob-img-' + a.id);
+            if (imgEl) {
+              imgEl.innerHTML = `<img class="ob-card-img" src="${found.cover}" loading="lazy" onerror="this.style.display='none'">`;
+            }
+          }
+        }
+      } catch(e) {}
+    }));
+  }
 }
 
 // Выбор/снятие артиста
@@ -252,20 +295,38 @@ async function toggleObArtist(id) {
 // Расширяем пул похожими артистами
 async function expandObPool(artistId) {
   try {
-    const res = await fetch(RAILWAY_URL + `/api/onboarding/expand?artist_id=${artistId}`);
-    const data = await res.json();
-    const newArtists = (data.artists || []).filter(a => !obPoolIds.has(a.id));
+    let newArtists = [];
+
+    // Пробуем Railway (таймаут 3 сек)
+    try {
+      const res = await Promise.race([
+        fetch(RAILWAY_URL + `/api/onboarding/expand?artist_id=${artistId}`),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000))
+      ]);
+      const data = await res.json();
+      newArtists = (data.artists || []).filter(a => !obPoolIds.has(a.id));
+    } catch(e) {
+      // Fallback через Vercel search
+      const found = obPool.find(a => a.id === artistId);
+      if (found) {
+        try {
+          const r = await fetch(`/api/search?action=search&q=${encodeURIComponent(found.name)}&limit=8`);
+          const d = await r.json();
+          newArtists = (d.artists || [])
+            .filter(a => !obPoolIds.has(a.id))
+            .map(a => ({id: a.id, name: a.name, cover: a.cover, genres: a.genres || []}));
+        } catch(_) {}
+      }
+    }
+
     if (!newArtists.length) return;
 
-    // Добавляем в начало пула (после уже выбранных)
     newArtists.forEach(a => { obPoolIds.add(a.id); });
-
-    // Вставляем новых артистов в начало (перед уже выбранными не трогаем)
-    const insertPos = [...obSelected.keys()].length;
     obPool.splice(0, 0, ...newArtists);
-
-    // Перерендериваем с анимацией
     renderObGridAnimated(newArtists.map(a => a.id));
+
+    const noPhoto = newArtists.filter(a => !a.cover);
+    if (noPhoto.length) loadObPhotos(noPhoto);
   } catch(e) {
     console.warn('expand failed:', e);
   }
