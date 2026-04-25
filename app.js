@@ -89,6 +89,7 @@ async function doSearch(query) {
 // ── RENDER ──
 function renderList(containerId, items) {
   const list = document.getElementById(containerId);
+  if (!list) return;
   const msgs = { 'track-list': 'Введи название трека<br>или исполнителя', 'liked-tracks-list': 'Нет любимых треков', 'history-list': 'История пуста' };
   if (!items.length) { list.innerHTML = `<div class="empty"><p>${msgs[containerId]}</p></div>`; return; }
   const source = containerId === 'liked-tracks-list' ? 'fav' : containerId === 'history-list' ? 'history' : 'all';
@@ -121,201 +122,179 @@ function renderList(containerId, items) {
 // ════════════════════════════════════════════
 
 // Начальная сетка — популярные артисты разных жанров
-const OB_SEED_ARTISTS = [
-  'Drake','The Weeknd','Kendrick Lamar','Taylor Swift','Post Malone',
-  'Billie Eilish','Travis Scott','Bad Bunny','Saluki','Скриптонит',
-  'MORGENSHTERN','Playboi Carti','SZA','Future','Kanye West',
-  'Фараон','Oxxxymiron','Miyagi','Eminem','Coldplay',
-  'Lil Baby','Doja Cat','Metro Boomin','Rod Wave','Juice WRLD',
-  'Harry Styles','Lil Uzi Vert','Ariana Grande',
-];
+// ════════════════════════════════════════════
+// ── ОНБОРДИНГ: Динамический (снежный ком) ──
+// ════════════════════════════════════════════
 
-let obSelectedArtists = new Set(); // Set имён
-let obArtistData = {};             // {name: {id, cover, genres}}
+// Состояние онбординга
+let obPool = [];           // все артисты в пуле [{id, name, cover, genres}]
+let obPoolIds = new Set(); // быстрая проверка дублей
+let obSelected = new Map(); // id -> {id, name, cover, genres}
+let obCardCount = 0;
 let obSearchTimer = null;
-let obSuggestionLoading = new Set(); // предотвращаем дубли
+let obLoadingExpand = new Set(); // защита от двойного expand
 
 function checkOnboarding() {
-  const done = localStorage.getItem('ob_done');
-  if (!done) {
-    document.getElementById('onboarding').classList.remove('hidden');
-    loadObGrid();
-  } else {
-    document.getElementById('onboarding').classList.add('hidden');
-  }
+  if (localStorage.getItem('ob_done')) return;
+  document.getElementById('onboarding').classList.remove('hidden');
+  loadObSeeds();
 }
 
-// ── Рендер сетки ──
-async function loadObGrid() {
+// Загружаем начальный набор с бэка
+async function loadObSeeds() {
   const grid = document.getElementById('ob-grid');
-  if (!grid) { console.error('ob-grid not found'); return; }
-  grid.innerHTML = OB_SEED_ARTISTS.map((name, i) => makeObCard(name, i)).join('');
-  // Загружаем фото батчами
-  for (let i = 0; i < OB_SEED_ARTISTS.length; i += 8) {
-    await Promise.all(OB_SEED_ARTISTS.slice(i, i+8).map((name, j) => loadObPhoto(name, i+j)));
+  if (!grid) return;
+  grid.innerHTML = '<div style="color:#555;padding:20px;text-align:center;">Загружаю...</div>';
+  try {
+    const res = await fetch(RAILWAY_URL + '/api/onboarding/seeds');
+    const data = await res.json();
+    const artists = data.artists || [];
+    if (!artists.length) { loadObFallback(); return; }
+    obPool = artists;
+    obPoolIds = new Set(artists.map(a => a.id));
+    renderObGrid();
+    // Загружаем фото для тех у кого нет
+    await loadObPhotos(artists.filter(a => !a.cover));
+  } catch(e) {
+    console.error('loadObSeeds:', e);
+    loadObFallback();
   }
 }
 
-function makeObCard(name, idx) {
-  const safeName = name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-  return `<div class="ob-artist-card" id="ob-card-${idx}" data-name="${name.replace(/"/g,'&quot;')}" onclick="toggleObArtist('${safeName}',${idx})">
-    <div style="width:100%;height:100%;background:var(--bg3);display:flex;align-items:center;justify-content:center;">
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+// Фолбэк если бэк недоступен
+async function loadObFallback() {
+  const FALLBACK = [
+    {id:'3TVXtAsR1Inumwj472S9r4',name:'Drake'},{id:'1Xyo4u8uXC1ZmMpatF05PJ',name:'The Weeknd'},
+    {id:'2YZyLoL8N0Wb9xBt1NhZWg',name:'Kendrick Lamar'},{id:'06HL4z0CvFAxyc27GXpf02',name:'Taylor Swift'},
+    {id:'246dkjvS1zLTtiykXe5h60',name:'Post Malone'},{id:'6qqNVTkY8uBg9cP3Jd7DAH',name:'Billie Eilish'},
+    {id:'0Y5tJX1MQlPlqiwlOH1tJY',name:'Travis Scott'},{id:'4q3ewBCX7sLwd24euuV69X',name:'Bad Bunny'},
+    {id:'5LHRHt1k9lMyONurDHEdrp',name:'Eminem'},{id:'0C8ZW7ezQVs4URX5aX7Kqx',name:'Coldplay'},
+    {id:'2A7Ch1dIhGMz3EWyxbNWBo',name:'Скриптонит'},{id:'4lGnEkKKONfFpJfcJDWV3w',name:'Oxxxymiron'},
+  ];
+  obPool = FALLBACK;
+  obPoolIds = new Set(FALLBACK.map(a => a.id));
+  renderObGrid();
+  await loadObPhotos(FALLBACK);
+}
+
+// Рендер сетки из пула
+function renderObGrid() {
+  const grid = document.getElementById('ob-grid');
+  if (!grid) return;
+  // Показываем весь пул
+  grid.innerHTML = obPool.map((a, i) => makeObCard(a, i)).join('');
+  // Восстанавливаем состояние выбранных
+  obSelected.forEach((_, id) => {
+    const card = document.querySelector(`[data-ob-id="${id}"]`);
+    if (card) card.classList.add('selected');
+  });
+}
+
+function makeObCard(a, idx) {
+  const isSelected = obSelected.has(a.id);
+  return `<div class="ob-artist-card ${isSelected ? 'selected' : ''}"
+    data-ob-id="${a.id}"
+    onclick="toggleObArtist('${a.id}')">
+    <div style="width:100%;height:100%;background:var(--bg3);display:flex;align-items:center;justify-content:center;" id="ob-img-${a.id}">
+      ${a.cover
+        ? `<img class="ob-card-img" src="${a.cover}" loading="lazy" onerror="this.style.display='none'">`
+        : `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>`}
     </div>
-    <div class="ob-card-grad"><div class="ob-card-name">${name}</div></div>
+    <div class="ob-card-grad"><div class="ob-card-name">${a.name}</div></div>
     <div class="ob-card-check"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
   </div>`;
 }
 
-async function loadObPhoto(name, idx) {
-  if (obArtistData[name]) return;
-  try {
-    const res = await fetch('/api/search?action=search&q=' + encodeURIComponent(name));
-    const data = await res.json();
-    const artist = data.artists?.[0];
-    if (!artist) { console.warn('No artist found for:', name); return; }
-    obArtistData[name] = { id: artist.id, cover: artist.cover, genres: artist.genres || [] };
-    updateObCardPhoto(name, idx);
-  } catch(e) { console.error('loadObPhoto error for', name, e); }
+// Загружаем фото для артистов без обложки через Spotify search
+async function loadObPhotos(artists) {
+  await Promise.all(artists.slice(0, 12).map(async a => {
+    try {
+      const r = await fetch(`/api/search?action=search&q=${encodeURIComponent(a.name)}&limit=1`);
+      const d = await r.json();
+      const found = d.artists?.[0];
+      if (found?.cover) {
+        // Обновляем в пуле
+        const idx = obPool.findIndex(p => p.id === a.id);
+        if (idx >= 0) obPool[idx].cover = found.cover;
+        // Обновляем карточку в DOM
+        const imgEl = document.getElementById('ob-img-' + a.id);
+        if (imgEl) imgEl.innerHTML = `<img class="ob-card-img" src="${found.cover}" loading="lazy">`;
+      }
+    } catch(e) {}
+  }));
 }
 
-function updateObCardPhoto(name, idx) {
-  const card = idx !== undefined
-    ? document.getElementById('ob-card-' + idx)
-    : document.querySelector(`[data-name="${name.replace(/"/g,'&quot;')}"]`);
-  if (!card) return;
-  const d = obArtistData[name];
-  if (!d?.cover) return;
-  card.innerHTML = `
-    <img class="ob-card-img" src="${d.cover}" loading="lazy">
-    <div class="ob-card-grad"><div class="ob-card-name">${name}</div></div>
-    <div class="ob-card-check"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>`;
-  if (obSelectedArtists.has(name)) card.classList.add('selected');
-}
+// Выбор/снятие артиста
+async function toggleObArtist(id) {
+  const artist = obPool.find(a => a.id === id);
+  if (!artist) return;
 
-// ── Выбор артиста + подгрузка похожих ──
-async function toggleObArtist(name, idx) {
-  const card = idx !== undefined
-    ? document.getElementById('ob-card-' + idx)
-    : document.querySelector(`[data-name="${name.replace(/"/g,'&quot;')}"]`);
-  if (obSelectedArtists.has(name)) {
-    obSelectedArtists.delete(name);
+  const card = document.querySelector(`[data-ob-id="${id}"]`);
+
+  if (obSelected.has(id)) {
+    // Снимаем выбор
+    obSelected.delete(id);
     if (card) card.classList.remove('selected');
-    document.getElementById('ob-sugg-' + (idx ?? name))?.remove();
   } else {
-    obSelectedArtists.add(name);
+    // Выбираем
+    obSelected.set(id, artist);
     if (card) card.classList.add('selected');
-    if (!obArtistData[name]) await loadObPhoto(name, idx);
-    loadObSuggestions(name, idx);
+
+    // Снежный ком: подгружаем похожих
+    if (!obLoadingExpand.has(id)) {
+      obLoadingExpand.add(id);
+      expandObPool(id);
+    }
   }
   updateObBtn();
 }
 
-async function loadObSuggestions(name) {
-  if (obSuggestionLoading.has(name)) return;
-  obSuggestionLoading.add(name);
-
-  const artistId = obArtistData[name]?.id;
-  if (!artistId) return;
-
+// Расширяем пул похожими артистами
+async function expandObPool(artistId) {
   try {
-    // Получаем related artists через API
-    const res = await fetch('/api/search?action=artist&artist_id=' + encodeURIComponent(artistId));
+    const res = await fetch(RAILWAY_URL + `/api/onboarding/expand?artist_id=${artistId}`);
     const data = await res.json();
+    const newArtists = (data.artists || []).filter(a => !obPoolIds.has(a.id));
+    if (!newArtists.length) return;
 
-    // Ищем related через поиск (используем топ треки артиста как источник)
-    const relRes = await fetch('/api/search?action=related&track=id:' + encodeURIComponent(artistId + '|' + name) + '&limit=8');
-    const relData = await relRes.json();
+    // Добавляем в начало пула (после уже выбранных)
+    newArtists.forEach(a => { obPoolIds.add(a.id); });
 
-    // Берём уникальных артистов из related треков
-    const relArtists = [];
-    const seenIds = new Set([artistId]);
-    for (const t of (relData.tracks || [])) {
-      if (!seenIds.has(t.artist_id) && relArtists.length < 5) {
-        seenIds.add(t.artist_id);
-        relArtists.push({ id: t.artist_id, name: t.artist, cover: t.cover });
-      }
-    }
+    // Вставляем новых артистов в начало (перед уже выбранными не трогаем)
+    const insertPos = [...obSelected.keys()].length;
+    obPool.splice(0, 0, ...newArtists);
 
-    if (!relArtists.length) return;
-
-    // Сохраняем данные
-    relArtists.forEach(a => {
-      if (!obArtistData[a.name]) {
-        obArtistData[a.name] = { id: a.id, cover: a.cover, genres: [] };
-      }
-    });
-
-    // Вставляем строку похожих после карточки артиста
-    const card = document.getElementById('ob-card-' + CSS.escape(name));
-    if (!card) return;
-
-    // Удаляем старую строку если есть
-    document.getElementById('ob-sugg-' + CSS.escape(name))?.remove();
-
-    // Создаём строку с чипсами похожих
-    const grid = document.getElementById('ob-grid');
-    const row = document.createElement('div');
-    row.className = 'ob-suggestion-row';
-    row.id = 'ob-sugg-' + CSS.escape(name);
-    row.style.gridColumn = '1 / -1'; // на всю ширину сетки
-    row.innerHTML = relArtists.map(a => {
-      const safeName = a.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-      const isSelected = obSelectedArtists.has(a.name);
-      return `<div class="ob-suggestion-chip ${isSelected ? 'selected' : ''}" onclick="addObSuggestion('${a.id}','${safeName}','${(a.cover||'').replace(/'/g,"\\'")}',this)">
-        <div class="ob-chip-avatar">${a.cover ? `<img src="${a.cover}" loading="lazy">` : ''}</div>
-        <span class="ob-chip-name">${a.name}</span>
-        <span class="ob-chip-plus">${isSelected ? '✓' : '+'}</span>
-      </div>`;
-    }).join('');
-
-    // Вставляем после карточки
-    card.after(row);
-
-  } catch(e) {}
-  obSuggestionLoading.delete(name);
-}
-
-function addObSuggestion(id, name, cover, el) {
-  obArtistData[name] = { id, cover, genres: [] };
-  if (obSelectedArtists.has(name)) {
-    obSelectedArtists.delete(name);
-    el.classList.remove('selected');
-    el.querySelector('.ob-chip-plus').textContent = '+';
-  } else {
-    obSelectedArtists.add(name);
-    el.classList.add('selected');
-    el.querySelector('.ob-chip-plus').textContent = '✓';
-    // Добавляем в сетку если нет
-    if (!document.getElementById('ob-card-' + CSS.escape(name))) {
-      const grid = document.getElementById('ob-grid');
-      const div = document.createElement('div');
-      div.className = 'ob-artist-card selected';
-      div.id = 'ob-card-' + CSS.escape(name);
-      const safeName2 = name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-      div.onclick = () => toggleObArtist(name);
-      div.innerHTML = `${cover ? `<img class="ob-card-img" src="${cover}">` : '<div style="width:100%;height:100%;background:var(--bg3)"></div>'}
-        <div class="ob-card-grad"><div class="ob-card-name">${name}</div></div>
-        <div class="ob-card-check" style="opacity:1"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>`;
-      grid.prepend(div);
-    } else {
-      document.getElementById('ob-card-' + CSS.escape(name))?.classList.add('selected');
-    }
+    // Перерендериваем с анимацией
+    renderObGridAnimated(newArtists.map(a => a.id));
+  } catch(e) {
+    console.warn('expand failed:', e);
   }
-  updateObBtn();
 }
 
-function updateObBtn() {
-  const count = obSelectedArtists.size;
-  const btn = document.getElementById('ob-btn');
-  const countEl = document.getElementById('ob-selected-count');
-  btn.classList.toggle('active', count >= 3);
-  countEl.textContent = count >= 3
-    ? `Выбрано ${count} артист${count < 5 ? 'а' : 'ов'} — готово!`
-    : `Ещё ${3 - count} — и можно продолжить`;
+// Рендер с анимацией новых карточек
+function renderObGridAnimated(newIds) {
+  const grid = document.getElementById('ob-grid');
+  if (!grid) return;
+
+  // Добавляем новые карточки в начало
+  const newHtml = obPool.slice(0, newIds.length).map((a, i) => makeObCard(a, i)).join('');
+  const temp = document.createElement('div');
+  temp.innerHTML = newHtml;
+
+  // Анимируем появление
+  [...temp.children].forEach(card => {
+    card.style.opacity = '0';
+    card.style.transform = 'scale(0.8)';
+    grid.insertBefore(card, grid.firstChild);
+    requestAnimationFrame(() => {
+      card.style.transition = 'opacity 0.3s, transform 0.3s';
+      card.style.opacity = '1';
+      card.style.transform = 'scale(1)';
+    });
+  });
 }
 
-// ── Поиск в онбординге ──
+// Поиск артиста в онбординге
 document.addEventListener('DOMContentLoaded', () => {
   const inp = document.getElementById('ob-search-input');
   if (!inp) return;
@@ -327,7 +306,6 @@ document.addEventListener('DOMContentLoaded', () => {
     obSearchTimer = setTimeout(() => searchObArtists(q), 400);
   });
 
-  // Увеличенный таймаут — iOS нужно время чтобы зарегистрировать tap до blur
   inp.addEventListener('blur', () => {
     setTimeout(() => {
       const results = document.getElementById('ob-search-results');
@@ -335,64 +313,125 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 400);
   });
 
-  // Когда фокус на поиске — скроллим онбординг вверх чтобы результаты были видны
   inp.addEventListener('focus', () => {
-    setTimeout(() => {
-      inp.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 300);
+    setTimeout(() => inp.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
   });
 });
 
 async function searchObArtists(q) {
+  const results = document.getElementById('ob-search-results');
+  if (!results) return;
   try {
-    const res = await fetch('/api/search?q=' + encodeURIComponent(q) + '&action=search');
-    const data = await res.json();
-    const results = document.getElementById('ob-search-results');
-    const foundArtists = (data.artists || []).slice(0, 6);
-    if (!foundArtists.length) { results.style.display = 'none'; return; }
+    const r = await fetch(`/api/search?action=search&q=${encodeURIComponent(q)}&limit=5`);
+    const d = await r.json();
+    const artists = d.artists || [];
+    if (!artists.length) {
+      results.style.display = 'block';
+      results.innerHTML = '<div style="color:#555;font-size:13px;padding:12px;">Не найдено</div>';
+      return;
+    }
     results.style.display = 'block';
-    results.innerHTML = foundArtists.map(a => {
-      const safeName = a.name.replace(/'/g,"\'");
-      const safeCover = (a.cover||'').replace(/'/g,"\'");
-      return `<div class="ob-search-result-item" onclick="addObArtistFromSearch('${a.id}','${safeName}','${safeCover}')">
-        <div class="ob-result-cover">${a.cover ? `<img src="${a.cover}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : ''}</div>
-        <div><div class="ob-result-name">${a.name}</div><div class="ob-result-genre">${a.genres?.[0]||''}</div></div>
-        ${obSelectedArtists.has(a.name) ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" style="margin-left:auto"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
+    results.innerHTML = artists.map(a => {
+      const safeId = a.id;
+      const safeName = (a.name || '').replace(/'/g, "\'");
+      const safeCover = (a.cover || '').replace(/'/g, "\'");
+      return `<div class="ob-search-result-item"
+        onclick="addObArtistFromSearch('${safeId}','${safeName}','${safeCover}')">
+        <div class="ob-search-avatar">
+          ${a.cover ? `<img src="${a.cover}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : ''}
+        </div>
+        <div>
+          <div style="font-size:14px;font-weight:600;color:#fff;">${a.name}</div>
+          <div style="font-size:11px;color:#555;">${(a.genres || []).slice(0,2).join(', ') || 'Артист'}</div>
+        </div>
       </div>`;
     }).join('');
   } catch(e) {}
 }
 
 function addObArtistFromSearch(id, name, cover) {
-  obArtistData[name] = { id, cover, genres: [] };
+  // Скрываем результаты
   document.getElementById('ob-search-results').style.display = 'none';
   document.getElementById('ob-search-input').value = '';
-  if (!document.getElementById('ob-card-' + CSS.escape(name))) {
-    const grid = document.getElementById('ob-grid');
-    const div = document.createElement('div');
-    div.className = 'ob-artist-card';
-    div.id = 'ob-card-' + CSS.escape(name);
-    div.onclick = () => toggleObArtist(name);
-    div.innerHTML = `${cover ? `<img class="ob-card-img" src="${cover}">` : '<div style="width:100%;height:100%;background:var(--bg3)"></div>'}
-      <div class="ob-card-grad"><div class="ob-card-name">${name}</div></div>
-      <div class="ob-card-check"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>`;
-    grid.prepend(div);
+
+  // Если уже в пуле — просто выбираем
+  if (obPoolIds.has(id)) {
+    const card = document.querySelector(`[data-ob-id="${id}"]`);
+    if (card) { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    if (!obSelected.has(id)) toggleObArtist(id);
+    return;
   }
-  // Эмулируем клик для выбора + загрузки похожих
-  if (!obSelectedArtists.has(name)) toggleObArtist(name);
+
+  // Добавляем в начало пула
+  const artist = { id, name, cover };
+  obPool.unshift(artist);
+  obPoolIds.add(id);
+
+  // Вставляем карточку в начало грида
+  const grid = document.getElementById('ob-grid');
+  const card = document.createElement('div');
+  card.innerHTML = makeObCard(artist, 0);
+  const newCard = card.firstElementChild;
+  newCard.style.opacity = '0';
+  newCard.style.transform = 'scale(0.8)';
+  grid.insertBefore(newCard, grid.firstChild);
+  requestAnimationFrame(() => {
+    newCard.style.transition = 'opacity 0.3s, transform 0.3s';
+    newCard.style.opacity = '1';
+    newCard.style.transform = 'scale(1)';
+  });
+
+  // Выбираем
+  obSelected.set(id, artist);
+  newCard.classList.add('selected');
+  expandObPool(id);
+  updateObBtn();
+}
+
+function updateObBtn() {
+  const btn = document.getElementById('ob-btn');
+  const cnt = document.getElementById('ob-selected-count');
+  const count = obSelected.size;
+  const ready = count >= 3;
+  if (btn) {
+    btn.style.opacity = ready ? '1' : '0.4';
+    btn.style.pointerEvents = ready ? 'all' : 'none';
+  }
+  if (cnt) {
+    cnt.textContent = ready
+      ? `Выбрано: ${count} · Можно продолжить`
+      : `Выбери ещё ${3 - count}`;
+  }
 }
 
 async function finishOnboarding() {
-  if (obSelectedArtists.size < 3) return;
-  const selected = [...obSelectedArtists];
+  if (obSelected.size < 3) return;
+
+  const artistIds = [...obSelected.keys()];
+  const artistNames = [...obSelected.values()].map(a => a.name);
+
+  // Сохраняем локально (для рекомендаций)
   localStorage.setItem('ob_done', '1');
-  localStorage.setItem('ob_artists', JSON.stringify(selected));
-  // Сохраняем точные Spotify ID
-  const obIds = {};
-  selected.forEach(name => {
-    if (obArtistData[name]?.id) obIds[name] = obArtistData[name].id;
-  });
-  localStorage.setItem('ob_artist_ids', JSON.stringify(obIds));
+  localStorage.setItem('ob_artist_ids', JSON.stringify(
+    Object.fromEntries([...obSelected.entries()].map(([id, a]) => [a.name, id]))
+  ));
+  localStorage.setItem('ob_artists_v2', JSON.stringify(artistIds)); // чистый массив IDs
+
+  // Сохраняем профиль на бэке (с Telegram auth)
+  const initData = window.Telegram?.WebApp?.initData;
+  if (initData) {
+    try {
+      fetch(RAILWAY_URL + '/api/onboarding/complete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Telegram-Init-Data': initData,
+        },
+        body: JSON.stringify({ artist_ids: artistIds }),
+      }).catch(() => {});
+    } catch(e) {}
+  }
+
   document.getElementById('onboarding').classList.add('hidden');
   showToast('🎵 Подбираю музыку для тебя...');
   ['ai','related','albums','new_releases'].forEach(k => localStorage.removeItem('recs_cache_' + k));

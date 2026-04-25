@@ -410,7 +410,19 @@ function renderRecAlbums(albums) {
 
 // Получаем точные Spotify IDs сохранённых артистов
 function getObArtistIds() {
-  try { return JSON.parse(localStorage.getItem('ob_artist_ids') || '{}'); } catch { return {}; }
+  try {
+    // Новый формат: чистый массив IDs
+    const v2 = localStorage.getItem('ob_artists_v2');
+    if (v2) {
+      const ids = JSON.parse(v2);
+      if (Array.isArray(ids) && ids.length) {
+        // Возвращаем как объект {name: id} для совместимости
+        return Object.fromEntries(ids.map((id, i) => [`artist_${i}`, id]));
+      }
+    }
+    // Старый формат
+    return JSON.parse(localStorage.getItem('ob_artist_ids') || '{}');
+  } catch { return {}; }
 }
 
 // Собираем IDs из истории прослушиваний (artist_id поле)
