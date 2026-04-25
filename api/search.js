@@ -53,6 +53,7 @@ export default async function handler(req, res) {
       album: t.album?.name || '',
       album_id: t.album?.id || '',
       cover: t.album?.images?.[0]?.url || null,
+      duration_ms: t.duration_ms || 0,
       dur: t.duration_ms
         ? Math.floor(t.duration_ms/60000)+':'+String(Math.floor((t.duration_ms%60000)/1000)).padStart(2,'0')
         : '0:00',
