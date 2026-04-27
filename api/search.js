@@ -633,31 +633,47 @@ export default async function handler(req, res) {
     }
 
     // ── ДИАГНОСТИКА ──
-    // ── EXPAND_ARTIST: похожие артисты (быстро, без Claude) ──
+    // ── EXPAND_ARTIST: похожие артисты через Spotify Recommendations API ──
     if (action === 'expand_artist') {
       if (!artist_id) return res.status(400).json({ error: 'artist_id required' });
-      const debug_info = { version: 'v3-spotify-only', artist_id, steps: [] };
+      const debug_info = { version: 'v4-recommendations', artist_id, steps: [] };
 
-      // Получаем имя и жанры
-      let artistName = '';
-      let artistGenres = [];
+      // 1. Spotify Recommendations API — даёт треки похожих артистов
       try {
-        const info = await spFetch('/artists/' + artist_id);
-        artistName = info.name || '';
-        artistGenres = info.genres || [];
-        debug_info.name = artistName;
-        debug_info.genres = artistGenres;
-        if (info.error) debug_info.spotify_error = info.error;
+        const recs = await spFetch('/recommendations?seed_artists=' + artist_id + '&limit=30&market=US');
+        if (recs.tracks?.length) {
+          // Извлекаем уникальных артистов из рекомендаций
+          const seen = new Set([artist_id]);
+          const artistsMap = new Map();
+          for (const t of recs.tracks) {
+            for (const a of (t.artists || [])) {
+              if (!seen.has(a.id) && !artistsMap.has(a.id)) {
+                artistsMap.set(a.id, { id: a.id, name: a.name });
+              }
+              if (artistsMap.size >= 12) break;
+            }
+            if (artistsMap.size >= 12) break;
+          }
+
+          if (artistsMap.size > 0) {
+            // Получаем полную инфо (фото) для найденных артистов
+            const ids = [...artistsMap.keys()].slice(0, 10);
+            const infoResp = await spFetch('/artists?ids=' + ids.join(','));
+            const artists = (infoResp.artists || []).map(a => ({
+              id: a.id, name: a.name,
+              cover: a.images?.[0]?.url || null,
+              genres: (a.genres || []).slice(0, 2),
+            }));
+            debug_info.steps.push('recommendations: ' + artists.length);
+            return res.status(200).json({ artists, debug: debug_info });
+          }
+        }
+        debug_info.steps.push('recommendations: 0');
       } catch(e) {
-        debug_info.error = 'getArtistInfo failed: ' + e.message;
-        return res.status(200).json({ artists: [], debug: debug_info });
-      }
-      if (!artistName) {
-        debug_info.error = 'no name';
-        return res.status(200).json({ artists: [], debug: debug_info });
+        debug_info.steps.push('recommendations: err ' + (e.message || ''));
       }
 
-      // 1. Spotify related (если работает)
+      // 2. Fallback: Spotify related-artists (deprecated но иногда работает)
       try {
         const rel = await spFetch('/artists/' + artist_id + '/related-artists');
         if (rel.artists?.length) {
@@ -671,10 +687,20 @@ export default async function handler(req, res) {
             debug: debug_info
           });
         }
-        debug_info.steps.push('related: 0');
-      } catch(e) { debug_info.steps.push('related: err'); }
+      } catch(e) {}
 
-      // 2. Поиск по жанрам (параллельно)
+      // 3. Получаем имя/жанры для дальнейших попыток
+      let artistName = '';
+      let artistGenres = [];
+      try {
+        const info = await spFetch('/artists/' + artist_id);
+        artistName = info.name || '';
+        artistGenres = info.genres || [];
+        debug_info.name = artistName;
+        debug_info.genres = artistGenres;
+      } catch(e) {}
+
+      // 4. Поиск по жанрам
       if (artistGenres.length) {
         try {
           const queries = artistGenres.slice(0, 2).map(g =>
@@ -699,30 +725,35 @@ export default async function handler(req, res) {
           }
           debug_info.steps.push('genre-search: ' + artists.length);
           if (artists.length) return res.status(200).json({ artists, debug: debug_info });
-        } catch(e) { debug_info.steps.push('genre-search: err ' + e.message); }
-      } else {
-        debug_info.steps.push('no genres');
+        } catch(e) {}
       }
 
-      // 3. Поиск по имени артиста (последний шанс) - возвращает похожих по релевантности
+      // 5. Последний шанс — топ-треки самого артиста дают коллабораторов
       try {
-        const search = await spFetch('/search?q=' + encodeURIComponent(artistName) + '&type=artist&limit=20&market=US');
-        const arts = (search.artists?.items || [])
-          .filter(a => a.id !== artist_id)
-          .slice(0, 10);
-        debug_info.steps.push('name-search: ' + arts.length);
-        return res.status(200).json({
-          artists: arts.map(a => ({
+        const top = await spFetch('/artists/' + artist_id + '/top-tracks?market=US');
+        const seen = new Set([artist_id]);
+        const collabs = new Map();
+        for (const t of (top.tracks || [])) {
+          for (const a of (t.artists || [])) {
+            if (!seen.has(a.id) && !collabs.has(a.id)) {
+              collabs.set(a.id, { id: a.id, name: a.name });
+            }
+          }
+        }
+        if (collabs.size > 0) {
+          const ids = [...collabs.keys()].slice(0, 10);
+          const infoResp = await spFetch('/artists?ids=' + ids.join(','));
+          const artists = (infoResp.artists || []).map(a => ({
             id: a.id, name: a.name,
             cover: a.images?.[0]?.url || null,
             genres: (a.genres || []).slice(0, 2),
-          })),
-          debug: debug_info
-        });
-      } catch(e) {
-        debug_info.steps.push('name-search: err ' + e.message);
-      }
+          }));
+          debug_info.steps.push('collabs: ' + artists.length);
+          return res.status(200).json({ artists, debug: debug_info });
+        }
+      } catch(e) {}
 
+      debug_info.steps.push('all failed');
       return res.status(200).json({ artists: [], debug: debug_info });
     }
 
