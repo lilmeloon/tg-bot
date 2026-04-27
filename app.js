@@ -134,9 +134,37 @@ let obCardCount = 0;
 let obSearchTimer = null;
 let obLoadingExpand = new Set(); // защита от двойного expand
 
-function checkOnboarding() {
-  if (localStorage.getItem('ob_done')) return;
-  document.getElementById('onboarding').classList.remove('hidden');
+async function checkOnboarding() {
+  // 1. Локальная проверка
+  if (localStorage.getItem('ob_done') || localStorage.getItem('ob_artists_v2')) return;
+
+  // 2. Проверяем сервер если есть Telegram initData
+  const initData = window.Telegram?.WebApp?.initData;
+  if (initData) {
+    try {
+      const res = await Promise.race([
+        fetch(RAILWAY_URL + '/api/onboarding/check', {
+          headers: { 'X-Telegram-Init-Data': initData }
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(), 2000))
+      ]);
+      const data = await res.json();
+      if (data.completed && data.artist_ids?.length >= 3) {
+        // Восстанавливаем профиль локально и не показываем онбординг
+        localStorage.setItem('ob_done', '1');
+        localStorage.setItem('ob_artists_v2', JSON.stringify(data.artist_ids));
+        localStorage.setItem('ob_artist_ids', JSON.stringify(
+          Object.fromEntries(data.artist_ids.map((id, i) => [`a${i}`, id]))
+        ));
+        return;
+      }
+    } catch(e) {}
+  }
+
+  // 3. Показываем онбординг
+  const ob = document.getElementById('onboarding');
+  ob.classList.add('active');
+  ob.classList.remove('hidden');
   loadObSeeds();
 }
 
@@ -297,29 +325,33 @@ async function expandObPool(artistId) {
   try {
     let newArtists = [];
 
-    // Пробуем Railway (таймаут 3 сек)
+    // 1. Пробуем Vercel /api/search?action=expand_artist (надёжно)
     try {
-      const res = await Promise.race([
-        fetch(RAILWAY_URL + `/api/onboarding/expand?artist_id=${artistId}`),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000))
-      ]);
-      const data = await res.json();
-      newArtists = (data.artists || []).filter(a => !obPoolIds.has(a.id));
+      const r = await fetch(`/api/search?action=expand_artist&artist_id=${artistId}`);
+      const d = await r.json();
+      newArtists = (d.artists || []).filter(a => !obPoolIds.has(a.id));
     } catch(e) {
-      // Fallback через Vercel search
-      const found = obPool.find(a => a.id === artistId);
-      if (found) {
-        try {
-          const r = await fetch(`/api/search?action=search&q=${encodeURIComponent(found.name)}&limit=8`);
-          const d = await r.json();
-          newArtists = (d.artists || [])
-            .filter(a => !obPoolIds.has(a.id))
-            .map(a => ({id: a.id, name: a.name, cover: a.cover, genres: a.genres || []}));
-        } catch(_) {}
-      }
+      console.warn('[expand vercel] failed:', e);
     }
 
-    if (!newArtists.length) return;
+    // 2. Фолбэк через Railway если Vercel ничего не дал
+    if (!newArtists.length) {
+      try {
+        const res = await Promise.race([
+          fetch(RAILWAY_URL + `/api/onboarding/expand?artist_id=${artistId}`),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000))
+        ]);
+        const data = await res.json();
+        newArtists = (data.artists || []).filter(a => !obPoolIds.has(a.id));
+      } catch(e) {}
+    }
+
+    if (!newArtists.length) {
+      console.warn('[expand] No new artists for', artistId);
+      return;
+    }
+
+    console.log('[expand] Got', newArtists.length, 'new artists');
 
     newArtists.forEach(a => { obPoolIds.add(a.id); });
     obPool.splice(0, 0, ...newArtists);
@@ -493,7 +525,7 @@ async function finishOnboarding() {
     } catch(e) {}
   }
 
-  document.getElementById('onboarding').classList.add('hidden');
+  const _ob = document.getElementById('onboarding'); _ob.classList.add('hidden'); _ob.classList.remove('active');
   showToast('🎵 Подбираю музыку для тебя...');
   ['ai','related','albums','new_releases'].forEach(k => localStorage.removeItem('recs_cache_' + k));
   setTimeout(() => { loadNewReleases(true); loadRelated(true); loadAiRecs(true); loadRecAlbums(true); }, 300);

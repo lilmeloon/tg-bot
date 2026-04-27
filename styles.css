@@ -316,21 +316,22 @@
   .onboarding {
     position: fixed; inset: 0; z-index: 500;
     background: var(--bg);
-    display: flex; flex-direction: column;
+    display: none; flex-direction: column;
     overflow-y: auto;
     scrollbar-width: none;
   }
   .onboarding::-webkit-scrollbar { display: none; }
+  .onboarding.active { display: flex; }
   .onboarding.hidden { display: none; }
   .ob-header { padding: 20px 20px 0; flex-shrink: 0; }
   .ob-step { font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #444; margin-bottom: 8px; }
   .ob-title { font-family: 'Bebas Neue', sans-serif; font-size: 32px; letter-spacing: 2px; color: #fff; line-height: 1.1; }
   .ob-sub { font-size: 13px; color: #555; margin-top: 6px; font-weight: 500; }
-  .ob-search { margin: 14px 20px 0; position: relative; }
+  .ob-search { margin: 14px 20px 0; position: relative; z-index: 200; }
   .ob-search input { width: 100%; background: var(--bg2); border: var(--border); border-radius: 14px; padding: 11px 16px 11px 40px; color: #fff; font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 500; outline: none; }
   .ob-search input::placeholder { color: #444; }
   .ob-search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #444; pointer-events: none; }
-  .ob-search-results { position: absolute; bottom: calc(100% + 6px); left: 0; right: 0; background: var(--bg2); border: var(--border); border-radius: 14px; z-index: 100; max-height: 240px; overflow-y: auto; scrollbar-width: none; }
+  .ob-search-results { position: absolute; top: calc(100% + 6px); left: 0; right: 0; background: #1e1e1e; border: var(--border); border-radius: 14px; z-index: 200; max-height: 200px; overflow-y: auto; scrollbar-width: none; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
   .ob-search-results::-webkit-scrollbar { display: none; }
   .ob-search-result-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; cursor: pointer; transition: background 0.1s; }
   .ob-search-result-item:active { background: var(--bg3); }
@@ -342,10 +343,14 @@
   .ob-result-cover img { width: 100%; height: 100%; object-fit: cover; }
   .ob-result-name { font-size: 13px; font-weight: 700; color: #fff; }
   .ob-result-genre { font-size: 11px; color: #555; }
-  .ob-grid-wrap { flex: 1; overflow-y: auto; scrollbar-width: none; padding: 14px 20px 0; }
+  .ob-grid-wrap { flex: 1; overflow-y: auto; scrollbar-width: none; padding: 14px 20px 0; position: relative; z-index: 1; }
   .ob-grid-wrap::-webkit-scrollbar { display: none; }
   .ob-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding-bottom: 100px; }
-  .ob-artist-card { cursor: pointer; position: relative; border-radius: 14px; overflow: hidden; aspect-ratio: 1; background: var(--bg3); transition: transform 0.15s; }
+  .ob-artist-card { cursor: pointer; position: relative; border-radius: 14px; overflow: hidden; aspect-ratio: 1; background: var(--bg3); transition: transform 0.15s; min-height: 110px; }
+  /* Фолбэк для старых iOS Safari (<15.4) которые не поддерживают aspect-ratio */
+  @supports not (aspect-ratio: 1) {
+    .ob-artist-card { height: 32vw; max-height: 140px; }
+  }
   .ob-artist-card:active { transform: scale(0.95); }
   .ob-artist-card.selected::after { content: ''; position: absolute; inset: 0; border: 2.5px solid #fff; border-radius: 14px; pointer-events: none; }
   .ob-artist-card.selected .ob-card-check { opacity: 1; }
