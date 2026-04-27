@@ -623,6 +623,7 @@ export default async function handler(req, res) {
     // ── EXPAND_ARTIST: похожие артисты (быстро, без Claude) ──
     if (action === 'expand_artist') {
       if (!artist_id) return res.status(400).json({ error: 'artist_id required' });
+      const debug_info = { version: 'v3-spotify-only', artist_id, steps: [] };
 
       // Получаем имя и жанры
       let artistName = '';
@@ -631,26 +632,35 @@ export default async function handler(req, res) {
         const info = await spFetch('/artists/' + artist_id);
         artistName = info.name || '';
         artistGenres = info.genres || [];
+        debug_info.name = artistName;
+        debug_info.genres = artistGenres;
       } catch(e) {
-        return res.status(200).json({ artists: [] });
+        debug_info.error = 'getArtistInfo failed: ' + e.message;
+        return res.status(200).json({ artists: [], debug: debug_info });
       }
-      if (!artistName) return res.status(200).json({ artists: [] });
+      if (!artistName) {
+        debug_info.error = 'no name';
+        return res.status(200).json({ artists: [], debug: debug_info });
+      }
 
-      // 1. Пробуем Spotify related (если работает)
+      // 1. Spotify related (если работает)
       try {
         const rel = await spFetch('/artists/' + artist_id + '/related-artists');
         if (rel.artists?.length) {
+          debug_info.steps.push('related: ' + rel.artists.length);
           return res.status(200).json({
             artists: rel.artists.slice(0, 10).map(a => ({
               id: a.id, name: a.name,
               cover: a.images?.[0]?.url || null,
               genres: (a.genres || []).slice(0, 2),
-            }))
+            })),
+            debug: debug_info
           });
         }
-      } catch(e) {}
+        debug_info.steps.push('related: 0');
+      } catch(e) { debug_info.steps.push('related: err'); }
 
-      // 2. Поиск по жанрам (мгновенно, параллельно для 1-2 жанров)
+      // 2. Поиск по жанрам (параллельно)
       if (artistGenres.length) {
         try {
           const queries = artistGenres.slice(0, 2).map(g =>
@@ -673,26 +683,33 @@ export default async function handler(req, res) {
             }
             if (artists.length >= 10) break;
           }
-          if (artists.length) return res.status(200).json({ artists });
-        } catch(e) {}
+          debug_info.steps.push('genre-search: ' + artists.length);
+          if (artists.length) return res.status(200).json({ artists, debug: debug_info });
+        } catch(e) { debug_info.steps.push('genre-search: err ' + e.message); }
+      } else {
+        debug_info.steps.push('no genres');
       }
 
-      // 3. Поиск похожих по имени (последний шанс)
+      // 3. Поиск по имени артиста (последний шанс) - возвращает похожих по релевантности
       try {
-        const search = await spFetch('/search?q=' + encodeURIComponent(artistName) + '&type=artist&limit=10&market=US');
+        const search = await spFetch('/search?q=' + encodeURIComponent(artistName) + '&type=artist&limit=20&market=US');
         const arts = (search.artists?.items || [])
           .filter(a => a.id !== artist_id)
           .slice(0, 10);
+        debug_info.steps.push('name-search: ' + arts.length);
         return res.status(200).json({
           artists: arts.map(a => ({
             id: a.id, name: a.name,
             cover: a.images?.[0]?.url || null,
             genres: (a.genres || []).slice(0, 2),
-          }))
+          })),
+          debug: debug_info
         });
-      } catch(e) {}
+      } catch(e) {
+        debug_info.steps.push('name-search: err ' + e.message);
+      }
 
-      return res.status(200).json({ artists: [] });
+      return res.status(200).json({ artists: [], debug: debug_info });
     }
 
     if (action === 'debug') {
