@@ -144,9 +144,11 @@ async function playTrack(idx, source = 'all') {
   const t = list[idx];
   dlog('playTrack:', idx, source, t?.name || '?');
 
-  // Pre-fetch следующих 3 треков чтобы Railway закешировал ссылки
+  // Pre-fetch следующих треков (не блокирует) — отложенный, через 2 сек после старта
   if (source !== 'offline' && list.length > 1) {
-    prefetchTracks(list.slice(idx + 1, idx + 4));
+    setTimeout(() => {
+      try { prefetchTracks(list.slice(idx + 1, idx + 3)); } catch(e) {}
+    }, 2000);
   }
 
   // Если следующий трек уже предзагружен — используем его

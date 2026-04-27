@@ -418,7 +418,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   inp.addEventListener('focus', () => {
-    setTimeout(() => inp.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
+    setTimeout(() => inp.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300);
   });
 });
 
