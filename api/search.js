@@ -76,7 +76,20 @@ export default async function handler(req, res) {
     const r = await fetch('https://api.spotify.com/v1' + path, {
       headers: { 'Authorization': 'Bearer ' + token }
     });
-    return r.json();
+    const data = await r.json();
+    if (!r.ok) {
+      console.error('[Spotify error]', r.status, path, data);
+      // Если токен истёк — сбрасываем кеш и пробуем снова
+      if (r.status === 401) {
+        _spotifyToken = null;
+        const token2 = await getSpotifyToken();
+        const r2 = await fetch('https://api.spotify.com/v1' + path, {
+          headers: { 'Authorization': 'Bearer ' + token2 }
+        });
+        return r2.json();
+      }
+    }
+    return data;
   }
 
   async function getTopTracks(id) {
@@ -634,6 +647,7 @@ export default async function handler(req, res) {
         artistGenres = info.genres || [];
         debug_info.name = artistName;
         debug_info.genres = artistGenres;
+        if (info.error) debug_info.spotify_error = info.error;
       } catch(e) {
         debug_info.error = 'getArtistInfo failed: ' + e.message;
         return res.status(200).json({ artists: [], debug: debug_info });
