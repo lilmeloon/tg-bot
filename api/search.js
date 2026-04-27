@@ -620,6 +620,45 @@ export default async function handler(req, res) {
     }
 
     // ── ДИАГНОСТИКА ──
+    // ── EXPAND_ARTIST: похожие артисты для онбординга ──
+    if (action === 'expand_artist') {
+      if (!artist_id) return res.status(400).json({ error: 'artist_id required' });
+
+      // Пробуем Spotify related-artists (deprecated но иногда работает)
+      try {
+        const rel = await spFetch('/artists/' + artist_id + '/related-artists');
+        if (rel.artists?.length) {
+          return res.status(200).json({
+            artists: rel.artists.slice(0, 10).map(a => ({
+              id: a.id, name: a.name,
+              cover: a.images?.[0]?.url || null,
+              genres: (a.genres || []).slice(0, 2),
+            }))
+          });
+        }
+      } catch(e) {}
+
+      // Фолбэк: ищем артистов того же жанра
+      try {
+        const info = await spFetch('/artists/' + artist_id);
+        if (info.genres?.length) {
+          const genre = info.genres[0];
+          const search = await spFetch('/search?q=' + encodeURIComponent('genre:"' + genre + '"') + '&type=artist&limit=15&market=US');
+          const artists = (search.artists?.items || [])
+            .filter(a => a.id !== artist_id)
+            .slice(0, 10)
+            .map(a => ({
+              id: a.id, name: a.name,
+              cover: a.images?.[0]?.url || null,
+              genres: (a.genres || []).slice(0, 2),
+            }));
+          return res.status(200).json({ artists });
+        }
+      } catch(e) {}
+
+      return res.status(200).json({ artists: [] });
+    }
+
     if (action === 'debug') {
       const results = {
         spotify_token: false,
