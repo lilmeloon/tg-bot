@@ -214,36 +214,28 @@ async function loadObSeeds() {
   }
 }
 
-// Фолбэк с мгновенным отображением + загрузкой фото
+// Фолбэк с мгновенным отображением + загрузкой фото И корректных ID
 async function loadObFallback() {
-  const FALLBACK = [
-    {id:'3TVXtAsR1Inumwj472S9r4', name:'Drake'},
-    {id:'1Xyo4u8uXC1ZmMpatF05PJ', name:'The Weeknd'},
-    {id:'2YZyLoL8N0Wb9xBt1NhZWg', name:'Kendrick Lamar'},
-    {id:'06HL4z0CvFAxyc27GXpf02', name:'Taylor Swift'},
-    {id:'246dkjvS1zLTtiykXe5h60', name:'Post Malone'},
-    {id:'6qqNVTkY8uBg9cP3Jd7DAH', name:'Billie Eilish'},
-    {id:'0Y5tJX1MQlPlqiwlOH1tJY', name:'Travis Scott'},
-    {id:'4q3ewBCX7sLwd24euuV69X', name:'Bad Bunny'},
-    {id:'5LHRHt1k9lMyONurDHEdrp', name:'Eminem'},
-    {id:'0C8ZW7ezQVs4URX5aX7Kqx', name:'Coldplay'},
-    {id:'2A7Ch1dIhGMz3EWyxbNWBo', name:'Скриптонит'},
-    {id:'4lGnEkKKONfFpJfcJDWV3w', name:'Oxxxymiron'},
-    {id:'0HiLKNOkpGYkH6Mwe9YZEM', name:'PHARAOH'},
-    {id:'1SqNqMmwGJXr9EkAHjifqD', name:'MORGENSHTERN'},
-    {id:'3JRMkSBcnAXlmGMBnYsV3c', name:'Miyagi'},
-    {id:'53XhwfbYqKCa1cC15pYq2q', name:'Imagine Dragons'},
-    {id:'7n2Ycct7Beij7Dj7meI4X0', name:'Rammstein'},
-    {id:'1vCWHaC5f2uS3yhpwWbIA6', name:'Avicii'},
-    {id:'4MCBfE4596Uoi2O4DtmEMz', name:'Juice WRLD'},
-    {id:'699OTQXzgjhIYAHMy9RyPD', name:'Playboi Carti'},
-  ].map(a => ({...a, cover: null}));
+  // Имена популярных артистов — ID получаем через Spotify search
+  const FALLBACK_NAMES = [
+    'Drake', 'The Weeknd', 'Kendrick Lamar', 'Taylor Swift', 'Post Malone',
+    'Billie Eilish', 'Travis Scott', 'Bad Bunny', 'Eminem', 'Coldplay',
+    'Скриптонит', 'Oxxxymiron', 'PHARAOH', 'MORGENSHTERN', 'Miyagi',
+    'Imagine Dragons', 'Rammstein', 'Avicii', 'Juice WRLD', 'Playboi Carti',
+  ];
+
+  // Создаём временные карточки с заглушками (используем индексы как временные ID)
+  const FALLBACK = FALLBACK_NAMES.map((name, i) => ({
+    id: 'tmp_' + i,
+    name,
+    cover: null,
+  }));
 
   obPool = FALLBACK;
   obPoolIds = new Set(FALLBACK.map(a => a.id));
-  renderObGrid(); // Показываем сразу с иконками-заглушками
+  renderObGrid();
 
-  // Загружаем фото параллельно через Vercel /api/search
+  // Загружаем настоящие Spotify ID + фото параллельно
   await loadObPhotos(FALLBACK);
 }
 
@@ -275,7 +267,7 @@ function makeObCard(a, idx) {
   </div>`;
 }
 
-// Загружаем фото через Spotify (Vercel /api/search)
+// Загружаем фото И заменяем временные ID на настоящие Spotify IDs
 async function loadObPhotos(artists) {
   const batches = [];
   for (let i = 0; i < artists.length; i += 6) batches.push(artists.slice(i, i+6));
@@ -285,20 +277,45 @@ async function loadObPhotos(artists) {
       try {
         const r = await fetch(`/api/search?action=search&q=${encodeURIComponent(a.name)}&limit=3`);
         const d = await r.json();
-        // Ищем точное совпадение по ID
-        const found = d.artists?.find(ar => ar.id === a.id) || d.artists?.[0];
-        if (found?.cover) {
-          const idx = obPool.findIndex(p => p.id === a.id);
-          if (idx >= 0) {
-            obPool[idx].cover = found.cover;
-            // Обновляем карточку без перерендера всей сетки
-            const imgEl = document.getElementById('ob-img-' + a.id);
-            if (imgEl) {
-              imgEl.innerHTML = `<img class="ob-card-img" src="${found.cover}" loading="lazy" onerror="this.style.display='none'">`;
+        // Берём первого артиста из результатов
+        const found = d.artists?.[0];
+        if (!found) { dlog('  no spotify result for', a.name); return; }
+
+        const oldId = a.id;
+        const newId = found.id;
+
+        // Если ID был временным — заменяем на настоящий
+        if (oldId.startsWith('tmp_') || oldId !== newId) {
+          obPoolIds.delete(oldId);
+          obPoolIds.add(newId);
+        }
+
+        // Обновляем в пуле
+        const idx = obPool.findIndex(p => p.id === oldId);
+        if (idx >= 0) {
+          obPool[idx].id = newId;
+          obPool[idx].cover = found.cover;
+          obPool[idx].name = found.name; // настоящее имя из Spotify
+
+          // Перерисовываем эту карточку
+          const oldCard = document.querySelector(`[data-ob-id="${oldId}"]`);
+          if (oldCard) {
+            oldCard.setAttribute('data-ob-id', newId);
+            oldCard.setAttribute('onclick', `toggleObArtist('${newId}')`);
+            const imgWrap = oldCard.querySelector('[id^="ob-img-"]');
+            if (imgWrap) {
+              imgWrap.id = 'ob-img-' + newId;
+              if (found.cover) {
+                imgWrap.innerHTML = `<img class="ob-card-img" src="${found.cover}" loading="lazy" onerror="this.style.display='none'">`;
+              }
             }
+            const nameEl = oldCard.querySelector('.ob-card-name');
+            if (nameEl) nameEl.textContent = found.name;
           }
         }
-      } catch(e) {}
+      } catch(e) {
+        dlog('  loadObPhoto err for', a.name, e.message);
+      }
     }));
   }
 }
