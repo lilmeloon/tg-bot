@@ -620,11 +620,11 @@ export default async function handler(req, res) {
     }
 
     // ── ДИАГНОСТИКА ──
-    // ── EXPAND_ARTIST: похожие артисты для онбординга через Claude ──
+    // ── EXPAND_ARTIST: похожие артисты (быстро, без Claude) ──
     if (action === 'expand_artist') {
       if (!artist_id) return res.status(400).json({ error: 'artist_id required' });
 
-      // Получаем имя артиста и его жанры из Spotify
+      // Получаем имя и жанры
       let artistName = '';
       let artistGenres = [];
       try {
@@ -634,10 +634,9 @@ export default async function handler(req, res) {
       } catch(e) {
         return res.status(200).json({ artists: [] });
       }
-
       if (!artistName) return res.status(200).json({ artists: [] });
 
-      // 1. Пробуем Spotify related-artists (deprecated но иногда работает)
+      // 1. Пробуем Spotify related (если работает)
       try {
         const rel = await spFetch('/artists/' + artist_id + '/related-artists');
         if (rel.artists?.length) {
@@ -651,68 +650,49 @@ export default async function handler(req, res) {
         }
       } catch(e) {}
 
-      // 2. Через Claude AI — даёт имена похожих артистов
-      let similarNames = [];
-      if (process.env.ANTHROPIC_API_KEY) {
+      // 2. Поиск по жанрам (мгновенно, параллельно для 1-2 жанров)
+      if (artistGenres.length) {
         try {
-          const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-api-key': process.env.ANTHROPIC_API_KEY,
-              'anthropic-version': '2023-06-01',
-            },
-            body: JSON.stringify({
-              model: 'claude-haiku-4-5-20251001',
-              max_tokens: 400,
-              messages: [{
-                role: 'user',
-                content: `Дай 8 артистов, музыкально похожих на "${artistName}"${artistGenres.length ? ' (жанры: ' + artistGenres.slice(0,3).join(', ') + ')' : ''}. ВЕРНИ ТОЛЬКО JSON массив имён, без markdown. Пример: ["Artist 1","Artist 2"]`
-              }]
-            })
-          });
-          const claudeData = await claudeRes.json();
-          const text = claudeData.content?.[0]?.text || '[]';
-          const cleaned = text.replace(/```json|```/g, '').trim();
-          similarNames = JSON.parse(cleaned);
-        } catch(e) {
-          console.error('[expand claude]', e.message);
-        }
-      }
-
-      // 3. Если Claude не сработал — fallback по жанрам Spotify
-      if (!similarNames.length && artistGenres.length) {
-        try {
-          const search = await spFetch('/search?q=' + encodeURIComponent('genre:"' + artistGenres[0] + '"') + '&type=artist&limit=10&market=US');
-          const arts = (search.artists?.items || [])
-            .filter(a => a.id !== artist_id)
-            .slice(0, 10);
-          return res.status(200).json({
-            artists: arts.map(a => ({
-              id: a.id, name: a.name,
-              cover: a.images?.[0]?.url || null,
-              genres: (a.genres || []).slice(0, 2),
-            }))
-          });
+          const queries = artistGenres.slice(0, 2).map(g =>
+            spFetch('/search?q=' + encodeURIComponent('genre:"' + g + '"') + '&type=artist&limit=10&market=US')
+          );
+          const results = await Promise.all(queries);
+          const seen = new Set([artist_id]);
+          const artists = [];
+          for (const r of results) {
+            for (const a of (r.artists?.items || [])) {
+              if (!seen.has(a.id)) {
+                seen.add(a.id);
+                artists.push({
+                  id: a.id, name: a.name,
+                  cover: a.images?.[0]?.url || null,
+                  genres: (a.genres || []).slice(0, 2),
+                });
+              }
+              if (artists.length >= 10) break;
+            }
+            if (artists.length >= 10) break;
+          }
+          if (artists.length) return res.status(200).json({ artists });
         } catch(e) {}
       }
 
-      // 4. Получаем Spotify ID для имён от Claude (параллельно)
-      const found = await Promise.all(similarNames.slice(0, 8).map(async name => {
-        try {
-          const id = await findArtistId(name);
-          if (!id) return null;
-          const info = await spFetch('/artists/' + id);
-          return {
-            id, name: info.name || name,
-            cover: info.images?.[0]?.url || null,
-            genres: (info.genres || []).slice(0, 2),
-          };
-        } catch { return null; }
-      }));
+      // 3. Поиск похожих по имени (последний шанс)
+      try {
+        const search = await spFetch('/search?q=' + encodeURIComponent(artistName) + '&type=artist&limit=10&market=US');
+        const arts = (search.artists?.items || [])
+          .filter(a => a.id !== artist_id)
+          .slice(0, 10);
+        return res.status(200).json({
+          artists: arts.map(a => ({
+            id: a.id, name: a.name,
+            cover: a.images?.[0]?.url || null,
+            genres: (a.genres || []).slice(0, 2),
+          }))
+        });
+      } catch(e) {}
 
-      const result = found.filter(a => a && a.id !== artist_id);
-      return res.status(200).json({ artists: result });
+      return res.status(200).json({ artists: [] });
     }
 
     if (action === 'debug') {
