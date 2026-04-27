@@ -341,6 +341,7 @@ async function expandObPool(artistId) {
       const d = await r.json();
       newArtists = (d.artists || []).filter(a => !obPoolIds.has(a.id));
       dlog('  Vercel expand →', d.artists?.length || 0, 'artists,', newArtists.length, 'new');
+      if (d.debug) dlog('  debug:', JSON.stringify(d.debug));
     } catch(e) {
       dlog('  Vercel expand FAILED:', e.message);
     }
