@@ -27,6 +27,12 @@ async function startWave() {
     waveIsPlaying = true;
     updateWaveBtn();
     document.getElementById('wave-status').textContent = `LIBAUD FM · Бесконечное радио`;
+
+    // Массовый prefetch первых 5 треков параллельно — ускоряет переключения в 5 раз
+    if (typeof prefetchTracks === 'function') {
+      prefetchTracks(data.tracks.slice(0, 5));
+    }
+
     await playTrack(0, 'wave');
   } catch(e) {
     document.getElementById('wave-status').textContent = 'Ошибка загрузки';
