@@ -135,8 +135,13 @@ let obSearchTimer = null;
 let obLoadingExpand = new Set(); // защита от двойного expand
 
 async function checkOnboarding() {
+  dlog('checkOnboarding start');
   // 1. Локальная проверка
-  if (localStorage.getItem('ob_done') || localStorage.getItem('ob_artists_v2')) return;
+  if (localStorage.getItem('ob_done') || localStorage.getItem('ob_artists_v2')) {
+    dlog('  → already done locally');
+    return;
+  }
+  dlog('  → no local data, checking server...');
 
   // 2. Проверяем сервер если есть Telegram initData
   const initData = window.Telegram?.WebApp?.initData;
@@ -170,11 +175,14 @@ async function checkOnboarding() {
 
 // Загружаем начальный набор — сначала фолбэк мгновенно, потом обогащаем с бэка
 async function loadObSeeds() {
+  dlog('loadObSeeds start');
   const grid = document.getElementById('ob-grid');
-  if (!grid) return;
+  if (!grid) { dlog('  ❌ ob-grid not found!'); return; }
+  dlog('  ✓ ob-grid found');
 
   // 1. Сразу показываем фолбэк (не ждём сеть)
   await loadObFallback();
+  dlog('  ✓ fallback rendered, pool size:', obPool.length);
 
   // 2. Пробуем обогатить с Railway (в фоне)
   try {
@@ -297,8 +305,9 @@ async function loadObPhotos(artists) {
 
 // Выбор/снятие артиста
 async function toggleObArtist(id) {
+  dlog('toggleObArtist:', id);
   const artist = obPool.find(a => a.id === id);
-  if (!artist) return;
+  if (!artist) { dlog('  ❌ artist not in pool'); return; }
 
   const card = document.querySelector(`[data-ob-id="${id}"]`);
 
@@ -322,6 +331,7 @@ async function toggleObArtist(id) {
 
 // Расширяем пул похожими артистами
 async function expandObPool(artistId) {
+  dlog('expandObPool:', artistId);
   try {
     let newArtists = [];
 
@@ -330,8 +340,9 @@ async function expandObPool(artistId) {
       const r = await fetch(`/api/search?action=expand_artist&artist_id=${artistId}`);
       const d = await r.json();
       newArtists = (d.artists || []).filter(a => !obPoolIds.has(a.id));
+      dlog('  Vercel expand →', d.artists?.length || 0, 'artists,', newArtists.length, 'new');
     } catch(e) {
-      console.warn('[expand vercel] failed:', e);
+      dlog('  Vercel expand FAILED:', e.message);
     }
 
     // 2. Фолбэк через Railway если Vercel ничего не дал
@@ -538,7 +549,17 @@ function openResetModal() {
 function closeResetModal() {
   document.getElementById('reset-modal').classList.remove('open');
 }
-function resetAllData() {
+async function resetAllData() {
+  // Стираем серверный профиль чтобы онбординг показался заново
+  const initData = window.Telegram?.WebApp?.initData;
+  if (initData) {
+    try {
+      await fetch(RAILWAY_URL + '/api/onboarding/reset', {
+        method: 'POST',
+        headers: { 'X-Telegram-Init-Data': initData },
+      });
+    } catch(e) {}
+  }
   localStorage.clear();
   if (window.audio) { audio.pause(); audio.src = ''; }
   showToast('Данные сброшены');

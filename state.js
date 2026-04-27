@@ -1,6 +1,33 @@
 // ── ГЛОБАЛЬНОЕ СОСТОЯНИЕ ──
 const RAILWAY_URL = 'https://web-production-4beac.up.railway.app';
 
+// Debug: пишем все логи в панель
+window._debugLog = [];
+window.dlog = function(...args) {
+  const msg = args.map(a => {
+    if (typeof a === 'object') { try { return JSON.stringify(a); } catch { return String(a); } }
+    return String(a);
+  }).join(' ');
+  const time = new Date().toLocaleTimeString().slice(-9, -3);
+  window._debugLog.push(`[${time}] ${msg}`);
+  if (window._debugLog.length > 100) window._debugLog.shift();
+  const el = document.getElementById('debug-log');
+  if (el) el.textContent = window._debugLog.join('\n');
+  console.log(...args);
+};
+window.toggleDebug = function() {
+  const p = document.getElementById('debug-panel');
+  if (p) p.style.display = p.style.display === 'none' ? 'block' : 'none';
+};
+// Перехватываем ошибки
+window.addEventListener('error', e => {
+  dlog('❌ ERROR:', e.message, 'at', e.filename + ':' + e.lineno);
+});
+window.addEventListener('unhandledrejection', e => {
+  dlog('❌ PROMISE:', e.reason?.message || e.reason);
+});
+dlog('✓ Loaded state.js');
+
 // Аудио
 const audio = new Audio();
 audio.preload = 'none';

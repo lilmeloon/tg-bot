@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' https: 'unsafe-inline' 'unsafe-eval'; img-src 'self' https: data: blob:; media-src 'self' https: blob:; connect-src 'self' https: wss:;">
 <title>Libaud</title>
 <meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -295,6 +296,17 @@
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- ДЕБАГ ПАНЕЛЬ -->
+<div id="debug-panel" style="position:fixed;top:0;left:0;right:0;background:rgba(0,0,0,0.95);color:#0f0;font-family:monospace;font-size:10px;padding:8px;z-index:9999;max-height:50vh;overflow-y:auto;display:none;border-bottom:2px solid #0f0;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+    <strong style="color:#fff">DEBUG</strong>
+    <button onclick="document.getElementById('debug-log').textContent=''" style="background:#333;color:#fff;border:none;padding:2px 8px;font-size:10px;">CLR</button>
+    <button onclick="document.getElementById('debug-panel').style.display='none'" style="background:#333;color:#fff;border:none;padding:2px 8px;font-size:10px;">X</button>
+  </div>
+  <pre id="debug-log" style="margin:0;white-space:pre-wrap;word-break:break-all;"></pre>
+</div>
+<button onclick="toggleDebug()" style="position:fixed;bottom:120px;right:8px;width:40px;height:40px;border-radius:50%;background:rgba(0,255,0,0.3);color:#0f0;border:1px solid #0f0;font-family:monospace;font-size:14px;font-weight:bold;z-index:9998;cursor:pointer;">D</button>
 
 <!-- СТРАНИЦА АРТИСТА -->
 <div class="artist-page" id="artist-page">

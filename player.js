@@ -142,6 +142,12 @@ async function playTrack(idx, source = 'all') {
   currentIdx = idx; currentSource = source;
   nextPreloaded = false;
   const t = list[idx];
+  dlog('playTrack:', idx, source, t?.name || '?');
+
+  // Pre-fetch следующих 3 треков чтобы Railway закешировал ссылки
+  if (source !== 'offline' && list.length > 1) {
+    prefetchTracks(list.slice(idx + 1, idx + 4));
+  }
 
   // Если следующий трек уже предзагружен — используем его
   const nextList = source === 'fav' ? favorites : source === 'history' ? history : tracks;
@@ -166,13 +172,18 @@ async function playTrack(idx, source = 'all') {
   // Проверяем OPFS или R2 — если скачан, играем быстро
   const offlineUrl = await opfsLoad(t.id);
   const r2Url = t.file_url || null;
-  const streamUrl = `${RAILWAY_URL}/stream?artist=${encodeURIComponent(t.artist)}&name=${encodeURIComponent(t.name)}`;
+  const streamParams = new URLSearchParams({
+    artist: t.artist,
+    name: t.name,
+    track_id: t.id || '',
+    duration_ms: t.duration_ms || 0,
+  });
+  const streamUrl = `${RAILWAY_URL}/stream?${streamParams}`;
   const playUrl = offlineUrl || r2Url || streamUrl;
-  
+
   if (offlineUrl) showToast('▶ Офлайн');
   else if (r2Url) showToast('▶ Быстрый доступ');
   else showToast('⏳ Загружаю...');
-  
   audio.pause();
   audio.src = playUrl;
   audio.load();
@@ -197,13 +208,40 @@ async function playTrack(idx, source = 'all') {
 
 function preloadNext() {
   if (nextPreloaded) return;
-  const list = currentSource === 'fav' ? favorites : currentSource === 'history' ? history : tracks;
+  const list = currentSource === 'wave' ? waveQueue : currentSource === 'fav' ? favorites : currentSource === 'history' ? history : tracks;
   const nextT = list[currentIdx + 1];
   if (!nextT) return;
   nextPreloaded = true;
-  audioNext.src = `${RAILWAY_URL}/stream?artist=${encodeURIComponent(nextT.artist)}&name=${encodeURIComponent(nextT.name)}`;
+  const params = new URLSearchParams({
+    artist: nextT.artist,
+    name: nextT.name,
+    track_id: nextT.id || '',
+    duration_ms: nextT.duration_ms || 0,
+  });
+  audioNext.src = `${RAILWAY_URL}/stream?${params}`;
   audioNext.load();
 }
+
+// Prefetch первых 3 треков плейлиста на сервер (кешируются ссылки)
+async function prefetchTracks(trackList) {
+  if (!trackList?.length) { dlog('prefetchTracks: empty list'); return; }
+  const tracks = trackList.slice(0, 3).map(t => ({
+    id: t.id || '',
+    name: t.name || '',
+    artist: t.artist || '',
+    duration_ms: t.duration_ms || 0,
+  }));
+  dlog('prefetchTracks:', tracks.length, 'tracks');
+  try {
+    fetch(RAILWAY_URL + '/prefetch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tracks }),
+    }).then(r => dlog('  prefetch response:', r.status))
+      .catch(e => dlog('  prefetch FAILED:', e.message));
+  } catch(e) { dlog('  prefetch threw:', e.message); }
+}
+
 
 function updateMiniPlayer(t) {
   document.getElementById('player').classList.add('visible');
